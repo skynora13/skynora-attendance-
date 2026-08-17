@@ -14,7 +14,7 @@ const defaultData = {
   users: [
     {
       id: "u-admin",
-      email: "admin@skynora",
+      email: "admin@skynora.com",
       password: "admin123",
       name: "Skynora Admin",
       role: "admin",
@@ -22,7 +22,7 @@ const defaultData = {
     },
     {
       id: "u-ven",
-      email: "ven@skynora",
+      email: "ven@skynora.com",
       password: "ven132026",
       name: "Ven",
       role: "intern",
