@@ -1,0 +1,71 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "email": "admin@skynora",
+      "password": "admin123",
+      "name": "Skynora Admin",
+      "role": "admin",
+      "domain": "Management"
+    },
+    {
+      "id": "u-ven",
+      "email": "ven@skynora",
+      "password": "ven132026",
+      "name": "Ven",
+      "role": "intern",
+      "domain": "Web Development"
+    },
+    {
+      "id": "u-1786983069680",
+      "email": "manasha@skynora",
+      "password": "manasha@2026",
+      "name": "manasha",
+      "role": "intern",
+      "domain": "sales"
+    }
+  ],
+  "attendance": [
+    {
+      "id": "att-1",
+      "userId": "u-ven",
+      "date": "2026-08-16",
+      "checkIn": "2026-08-16T09:00:00+05:30",
+      "checkOut": "2026-08-16T18:00:00+05:30",
+      "dailyReport": "Completed the login page API and structured the database.",
+      "totalHours": 9
+    },
+    {
+      "id": "att-1786983142068",
+      "userId": "u-1786983069680",
+      "date": "2026-08-17",
+      "checkIn": "2026-08-17T16:12:22.068Z",
+      "checkOut": "2026-08-17T16:12:49.706Z",
+      "dailyReport": "i done my task",
+      "totalHours": 0.01
+    }
+  ],
+  "leaves": [
+    {
+      "id": "lv-1",
+      "userId": "u-ven",
+      "startDate": "2026-08-20",
+      "endDate": "2026-08-21",
+      "reason": "Family emergency",
+      "status": "pending",
+      "createdAt": "2026-08-17T10:00:00+05:30"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "tsk-1",
+      "userId": "u-ven",
+      "title": "Implement Leave Request UI",
+      "description": "Create a minimalist form for interns to request leaves and an admin review table.",
+      "status": "In Progress",
+      "assignedAt": "2026-08-17T11:00:00+05:30",
+      "statusUpdatedAt": "2026-08-17T11:00:00+05:30",
+      "notes": null
+    }
+  ]
+}

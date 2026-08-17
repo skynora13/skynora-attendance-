@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: skynora-attendance-system
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    disk:
+      name: db-disk
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

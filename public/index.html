@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skynora Technologies | Attendance Management System</title>
+  <meta name="description" content="Attendance, Task and Performance reporting system for Skynora remote interns.">
+  <!-- Google Fonts for premium typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast notification system -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Main Container -->
+  <main id="app-container">
+
+    <!-- LOGIN PAGE -->
+    <section id="login-section" class="auth-section">
+      <div class="auth-card">
+        <header class="auth-header">
+          <div class="logo">skynora.</div>
+          <h1>Intern Portal</h1>
+          <p class="subtitle">Access your attendance and task dashboard</p>
+        </header>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" required placeholder="e.g. ven@skynora" autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="login-role">System Role</label>
+              <select id="login-role">
+                <option value="intern">Remote Intern</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="domain-group">
+              <label for="login-domain">Domain</label>
+              <input type="text" id="login-domain" placeholder="e.g. Web Development" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block">Authenticate</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- INTERN DASHBOARD -->
+    <section id="intern-dashboard" class="dashboard-section hidden">
+      <!-- Nav -->
+      <nav class="nav-bar">
+        <div class="nav-brand">
+          <button class="menu-toggle-btn" id="intern-menu-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <span class="logo">skynora.</span>
+          <span class="badge" id="intern-domain-badge">Web Dev</span>
+        </div>
+        <div class="nav-user">
+          <span id="intern-name-display" class="user-name">Loading...</span>
+          <button id="logout-btn-intern" class="btn btn-secondary btn-sm">Sign Out</button>
+        </div>
+      </nav>
+
+      <!-- Sidebar + Main Area Grid -->
+      <div class="intern-layout">
+        <!-- Intern Navigation Sidebar -->
+        <aside class="intern-sidebar" id="intern-sidebar">
+          <ul>
+            <li>
+              <button class="sidebar-tab active" data-target="intern-attendance">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="sidebar-tab-label">Attendance Session</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="intern-tasks">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span class="sidebar-tab-label">Assigned Tasks</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="intern-leave-request">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <span class="sidebar-tab-label">Request Time Off</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="intern-leave-history">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span class="sidebar-tab-label">Leave History</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="intern-settings">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span class="sidebar-tab-label">Settings</span>
+              </button>
+            </li>
+          </ul>
+          <button class="sidebar-toggle-btn" id="intern-sidebar-toggle">
+            <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+            <span class="sidebar-toggle-label">Collapse</span>
+          </button>
+        </aside>
+
+        <!-- Intern Contents -->
+        <div class="intern-content-area">
+          
+          <!-- ATTENDANCE PANEL -->
+          <div id="intern-attendance" class="intern-tab-content">
+            <!-- Check In / Out Card -->
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Attendance Session</h2>
+                <span class="status-indicator-badge" id="session-status">Status: Offline</span>
+              </div>
+              <div class="card-body attendance-actions">
+                <div id="check-in-pane" class="action-pane">
+                  <p class="help-text">Start your daily remote internship session. Be sure to check out before leaving.</p>
+                  <button id="check-in-btn" class="btn btn-primary">Check In Session</button>
+                </div>
+
+                <div id="check-out-pane" class="action-pane hidden">
+                  <div class="form-group">
+                    <label for="daily-report-input">Daily Work Report <span class="required">*</span></label>
+                    <textarea id="daily-report-input" rows="4" placeholder="Detail the tasks completed, current progress, or blockers faced today..."></textarea>
+                  </div>
+                  <button id="check-out-btn" class="btn btn-danger">Submit & Check Out</button>
+                </div>
+                
+                <div id="completed-pane" class="action-pane hidden">
+                  <div class="success-message">
+                    <span class="success-icon">✓</span>
+                    <div>
+                      <h3>Session Finished</h3>
+                      <p id="session-summary-text">You have successfully checked out for today.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ASSIGNED TASKS PANEL -->
+          <div id="intern-tasks" class="intern-tab-content hidden">
+            <!-- Task Management Card -->
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Assigned Tasks</h2>
+                <span class="counter-badge" id="tasks-count">0 Tasks</span>
+              </div>
+              <div class="card-body">
+                <div id="tasks-empty-state" class="empty-state">
+                  <p>No tasks assigned by management yet.</p>
+                </div>
+                <div id="tasks-list" class="task-list">
+                  <!-- Dynamically populated tasks -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REQUEST TIME OFF PANEL -->
+          <div id="intern-leave-request" class="intern-tab-content hidden">
+            <!-- Leave Request Card -->
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Request Time Off</h2>
+              </div>
+              <div class="card-body">
+                <form id="leave-request-form">
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label for="leave-start">Start Date</label>
+                      <input type="date" id="leave-start" required>
+                    </div>
+                    <div class="form-group">
+                      <label for="leave-end">End Date</label>
+                      <input type="date" id="leave-end" required>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label for="leave-reason">Reason</label>
+                    <textarea id="leave-reason" rows="3" required placeholder="Specify why you are requesting leave..."></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Submit Leave Request</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- LEAVE HISTORY PANEL -->
+          <div id="intern-leave-history" class="intern-tab-content hidden">
+            <!-- Leave History Card -->
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Leave History</h2>
+              </div>
+              <div class="card-body overflow-x">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Duration</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leave-history-body">
+                    <!-- Dynamically populated leaves -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS PANEL -->
+          <div id="intern-settings" class="intern-tab-content hidden">
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>User Preferences & Settings</h2>
+              </div>
+              <div class="card-body">
+                <section style="margin-bottom: 24px;">
+                  <h3 style="margin-bottom: 12px;">App Theme</h3>
+                  <div style="display: flex; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="radio" name="intern-theme-pref" value="light" checked style="width: auto;"> Light Mode
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="radio" name="intern-theme-pref" value="dark" style="width: auto;"> Dark Mode
+                    </label>
+                  </div>
+                </section>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <section style="margin-bottom: 24px;">
+                  <h3 style="margin-bottom: 12px;">Notification Center</h3>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="intern-notify-desktop" style="width: auto;"> Enable browser desktop notifications
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN PORTAL -->
+    <section id="admin-dashboard" class="dashboard-section hidden">
+      <!-- Nav -->
+      <nav class="nav-bar">
+        <div class="nav-brand">
+          <button class="menu-toggle-btn" id="admin-menu-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <span class="logo">skynora.</span>
+          <span class="badge badge-admin">Admin Portal</span>
+        </div>
+        <div class="nav-user">
+          <span class="user-name">Management</span>
+          <button id="logout-btn-admin" class="btn btn-secondary btn-sm">Sign Out</button>
+        </div>
+      </nav>
+
+      <!-- Sidebar + Main Area Grid -->
+      <div class="admin-layout">
+        <!-- Admin Navigation Sidebar -->
+        <aside class="admin-sidebar" id="admin-sidebar">
+          <ul>
+            <li>
+              <button class="sidebar-tab active" data-target="admin-overview">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span class="sidebar-tab-label">Overview</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-interns">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span class="sidebar-tab-label">Interns</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-tasks">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span class="sidebar-tab-label">Tasks</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-leaves">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                <span class="sidebar-tab-label">Leaves</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-reports">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <span class="sidebar-tab-label">Reports</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-settings">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span class="sidebar-tab-label">Settings</span>
+              </button>
+            </li>
+          </ul>
+          <button class="sidebar-toggle-btn" id="admin-sidebar-toggle">
+            <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"></polyline><polyline points="18 17 13 12 18 7"></polyline></svg>
+            <span class="sidebar-toggle-label">Collapse</span>
+          </button>
+        </aside>
+
+        <!-- Admin Contents -->
+        <div class="admin-content-area">
+          
+          <!-- OVERVIEW TAB -->
+          <div id="admin-overview" class="admin-tab-content">
+            <div class="section-title-row">
+              <h1>Real-Time Operations</h1>
+              <p>Monitors check-ins, tasks, and leave statuses for the active day.</p>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-label">Total Remote Interns</span>
+                <span class="stat-value" id="stat-total-interns">0</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Currently Checked In</span>
+                <span class="stat-value" id="stat-active-checkins">0</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Pending Leave Requests</span>
+                <span class="stat-value" id="stat-pending-leaves">0</span>
+              </div>
+            </div>
+
+            <!-- Live activity layout -->
+            <div class="dashboard-grid">
+              <div class="grid-card col-span-3">
+                <div class="card-header">
+                  <h2>Active Work Sessions Today</h2>
+                </div>
+                <div class="card-body overflow-x">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Intern</th>
+                        <th>Domain</th>
+                        <th>Checked In At</th>
+                      </tr>
+                    </thead>
+                    <tbody id="active-checkins-body">
+                      <!-- Active check-ins list -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="grid-card col-span-2">
+                <div class="card-header">
+                  <h2>Recent Daily Reports</h2>
+                </div>
+                <div class="card-body list-scroll" id="recent-reports-container">
+                  <!-- Recent daily reports list -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- INTERN MANAGEMENT TAB -->
+          <div id="admin-interns" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Intern Management</h1>
+              <p>Onboard and monitor remote interns.</p>
+            </div>
+
+            <div class="dashboard-grid">
+              <!-- Add Intern Form -->
+              <div class="grid-card col-span-2">
+                <div class="card-header">
+                  <h2>Create Intern Account</h2>
+                </div>
+                <div class="card-body">
+                  <form id="create-intern-form">
+                    <div class="form-group">
+                      <label for="intern-name">Intern Name</label>
+                      <input type="text" id="intern-name" required placeholder="e.g. Ven">
+                    </div>
+                    <div class="form-group">
+                      <label for="intern-email">Login Email ID</label>
+                      <input type="email" id="intern-email" required placeholder="e.g. ven@skynora">
+                    </div>
+                    <div class="form-group">
+                      <label for="intern-password">Password</label>
+                      <input type="text" id="intern-password" required placeholder="e.g. ven132026">
+                    </div>
+                    <div class="form-group">
+                      <label for="intern-domain">Domain</label>
+                      <input type="text" id="intern-domain" placeholder="e.g. Data Science" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Onboard Intern</button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Intern list -->
+              <div class="grid-card col-span-3">
+                <div class="card-header">
+                  <h2>Registered Interns & Total Hours</h2>
+                </div>
+                <div class="card-body overflow-x">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email ID</th>
+                        <th>Domain</th>
+                        <th>Total Hours</th>
+                        <th>Completed Tasks</th>
+                      </tr>
+                    </thead>
+                    <tbody id="registered-interns-body">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TASK ASSIGNMENT TAB -->
+          <div id="admin-tasks" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Task Management</h1>
+              <p>Assign tasks and review intern statuses in real-time.</p>
+            </div>
+
+            <div class="dashboard-grid">
+              <!-- Assign Task Form -->
+              <div class="grid-card col-span-2">
+                <div class="card-header">
+                  <h2>Assign New Task</h2>
+                </div>
+                <div class="card-body">
+                  <form id="assign-task-form">
+                    <div class="form-group">
+                      <label for="task-intern">Select Intern</label>
+                      <select id="task-intern" required>
+                        <option value="">Select an intern...</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="task-title">Task Title</label>
+                      <input type="text" id="task-title" required placeholder="e.g. Design Dashboard Prototype">
+                    </div>
+                    <div class="form-group">
+                      <label for="task-desc">Task Description</label>
+                      <textarea id="task-desc" rows="4" required placeholder="Provide clear objectives..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Assign Task</button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Task Monitor Table -->
+              <div class="grid-card col-span-3">
+                <div class="card-header">
+                  <h2>Intern Task Real-Time Monitor</h2>
+                </div>
+                <div class="card-body overflow-x">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Intern</th>
+                        <th>Task</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody id="all-tasks-body">
+                      <!-- All tasks -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LEAVE REVIEW TAB -->
+          <div id="admin-leaves" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Leave Approval Portal</h1>
+              <p>Approve or reject pending leave requests from interns.</p>
+            </div>
+
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Pending Leave Requests</h2>
+              </div>
+              <div class="card-body overflow-x">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Intern Name</th>
+                      <th>Domain</th>
+                      <th>Dates</th>
+                      <th>Reason</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-leaves-body">
+                    <!-- Pending leaves -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- PERFORMANCE REPORTS TAB -->
+          <div id="admin-reports" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Monthly Performance Reporting</h1>
+              <p>Aggregates attendance metrics and task completions to calculate stipend & bonus ratings.</p>
+            </div>
+
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>Performance Summary & Stipend Decision Matrix</h2>
+              </div>
+              <div class="card-body overflow-x">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Intern</th>
+                      <th>Domain</th>
+                      <th>Hours Logged</th>
+                      <th>Leaves Taken</th>
+                      <th>Tasks Completed</th>
+                      <th>Performance Score</th>
+                      <th>Rating</th>
+                      <th>Stipend Recommendation</th>
+                    </tr>
+                  </thead>
+                  <tbody id="performance-report-body">
+                    <!-- Performance report items -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS PANEL -->
+          <div id="admin-settings" class="admin-tab-content hidden">
+            <div class="grid-card">
+              <div class="card-header">
+                <h2>System & Admin Settings</h2>
+              </div>
+              <div class="card-body">
+                <section style="margin-bottom: 24px;">
+                  <h3 style="margin-bottom: 12px;">App Theme</h3>
+                  <div style="display: flex; gap: 12px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="radio" name="admin-theme-pref" value="light" checked style="width: auto;"> Light Mode
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <input type="radio" name="admin-theme-pref" value="dark" style="width: auto;"> Dark Mode
+                    </label>
+                  </div>
+                </section>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <section style="margin-bottom: 24px;">
+                  <h3 style="margin-bottom: 12px;">Notification Rules</h3>
+                  <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="admin-notify-checkin" checked style="width: auto;"> Notify me when interns check in/out
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="admin-notify-leave" checked style="width: auto;"> Notify me when a new leave request is submitted
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="checkbox" id="admin-notify-task" checked style="width: auto;"> Notify me when tasks status is updated by interns
+                    </label>
+                  </div>
+                </section>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+                <section>
+                  <h3 style="margin-bottom: 12px;">Security</h3>
+                  <form id="admin-password-form" style="max-width: 300px;">
+                    <div class="form-group">
+                      <label for="admin-new-password">Change Password</label>
+                      <input type="password" id="admin-new-password" placeholder="Enter new password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Update Password</button>
+                  </form>
+                </section>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
