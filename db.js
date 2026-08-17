@@ -72,7 +72,27 @@ function readDb() {
   }
   try {
     const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    
+    // Auto-migrate legacy emails if they exist in the saved file
+    let migrated = false;
+    if (parsed.users) {
+      parsed.users.forEach(u => {
+        if (u.email === 'admin@skynora') {
+          u.email = 'admin@skynora.com';
+          migrated = true;
+        }
+        if (u.email === 'ven@skynora') {
+          u.email = 'ven@skynora.com';
+          migrated = true;
+        }
+      });
+    }
+    if (migrated) {
+      fs.writeFileSync(DB_PATH, JSON.stringify(parsed, null, 2), 'utf8');
+      console.log('Database migrated: legacy emails updated to .com format');
+    }
+    return parsed;
   } catch (err) {
     console.error("Error reading database file, resetting to default:", err);
     writeDb(defaultData);
