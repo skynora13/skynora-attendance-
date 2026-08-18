@@ -40,6 +40,63 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDomainRequired();
     roleSelect.addEventListener('change', updateDomainRequired);
   }
+
+  // Setup Timesheet generator events
+  const genBtn = document.getElementById('generate-timesheet-btn');
+  if (genBtn) {
+    genBtn.addEventListener('click', async () => {
+      const userId = document.getElementById('report-intern-select').value;
+      const month = document.getElementById('report-month-select').value;
+      const year = new Date().getFullYear();
+      
+      if (!userId) {
+        showToast('Please select an Intern first.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/admin/timesheet/${userId}?year=${year}&month=${month}`);
+        if (!res.ok) throw new Error('Failed to load timesheet data');
+        
+        const data = await res.json();
+        renderGeneratedTimesheet(data, month, year);
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  }
+  
+  const printBtn = document.getElementById('print-timesheet-btn');
+  if (printBtn) {
+    printBtn.addEventListener('click', () => {
+      const printContent = document.getElementById('printable-timesheet-area').innerHTML;
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html>
+          <head>
+            <title>Intern Monthly Timesheet Report</title>
+            <style>
+              body { font-family: 'Plus Jakarta Sans', sans-serif; padding: 40px; color: #111827; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #e5e7eb; padding: 10px 12px; text-align: left; font-size: 12px; }
+              th { background-color: #f9fafb; font-weight: 700; }
+              .data-table { border-spacing: 0; }
+            </style>
+          </head>
+          <body>
+            ${printContent}
+            <script>
+              window.onload = function() {
+                window.print();
+                setTimeout(function() { window.close(); }, 500);
+              }
+            <\/script>
+          </body>
+        </html>
+      `);
+      win.document.close();
+    });
+  }
 });
 
 // Toast Utility
@@ -795,6 +852,151 @@ async function loadAdminLeaves(cachedData) {
 }
 
 // TAB 5: PERFORMANCE REPORTS
+let comparisonChartInstance = null;
+
+function renderInternsComparisonChart(reports) {
+  const ctx = document.getElementById('interns-comparison-chart');
+  if (!ctx) return;
+  
+  if (comparisonChartInstance) {
+    comparisonChartInstance.destroy();
+  }
+  
+  const labels = reports.map(r => r.name);
+  const hoursData = reports.map(r => r.totalHours);
+  const scoresData = reports.map(r => r.performanceScore);
+  
+  const isDark = document.body.classList.contains('dark-theme');
+  const textColor = isDark ? '#f3f4f6' : '#1f2937';
+  const gridColor = isDark ? '#374151' : '#e5e7eb';
+  
+  comparisonChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total Hours Logged',
+          data: hoursData,
+          backgroundColor: 'rgba(99, 102, 241, 0.75)',
+          borderColor: '#6366f1',
+          borderWidth: 1,
+          borderRadius: 4
+        },
+        {
+          label: 'Performance Score (%)',
+          data: scoresData,
+          backgroundColor: 'rgba(18, 176, 126, 0.75)',
+          borderColor: '#12b07e',
+          borderWidth: 1,
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: textColor,
+            font: { family: 'Plus Jakarta Sans', weight: '600' }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Plus Jakarta Sans' } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: gridColor },
+          ticks: { color: textColor, font: { family: 'Plus Jakarta Sans' } }
+        }
+      }
+    }
+  });
+}
+
+function populateTimesheetDropdowns(reports) {
+  const selectEl = document.getElementById('report-intern-select');
+  if (!selectEl) return;
+  
+  const prevVal = selectEl.value;
+  selectEl.innerHTML = '<option value="">-- Choose an Intern --</option>';
+  
+  reports.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.userId;
+    opt.textContent = `${r.name} (${r.domain})`;
+    selectEl.appendChild(opt);
+  });
+  selectEl.value = prevVal;
+  
+  const monthSelect = document.getElementById('report-month-select');
+  if (monthSelect && monthSelect.children.length === 0) {
+    const monthsNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    for (let m = 0; m <= 11; m++) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = `${monthsNames[m]} ${currentYear}`;
+      if (m === currentMonth) opt.selected = true;
+      monthSelect.appendChild(opt);
+    }
+  }
+}
+
+function renderGeneratedTimesheet(data, monthIndex, year) {
+  const wrapper = document.getElementById('timesheet-report-wrapper');
+  if (!wrapper) return;
+  
+  const monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  document.getElementById('timesheet-meta-name').textContent = data.intern.name;
+  document.getElementById('timesheet-meta-email').textContent = data.intern.email;
+  document.getElementById('timesheet-meta-domain').textContent = data.intern.domain;
+  document.getElementById('timesheet-meta-month').textContent = `${monthsFull[monthIndex]} ${year}`;
+  document.getElementById('timesheet-meta-generated-date').textContent = `Generated: ${new Date().toLocaleDateString()}`;
+  
+  const tbody = document.getElementById('timesheet-table-body');
+  tbody.innerHTML = '';
+  
+  if (data.logs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--text-secondary);">No attendance logs found for this intern in the selected month.</td></tr>`;
+  } else {
+    data.logs.forEach(log => {
+      const dateObj = new Date(log.date);
+      const dayName = daysShort[dateObj.getDay()];
+      const formattedDate = `${log.date} (${dayName})`;
+      
+      const checkInTime = new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const checkOutTime = log.checkOut 
+        ? new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        : 'Active';
+      const duration = log.totalHours ? `${log.totalHours} hrs` : '--';
+      const report = log.dailyReport ? escapeHtml(log.dailyReport) : 'No work report submitted';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-family: var(--font-mono); font-weight: 600;">${formattedDate}</td>
+        <td style="font-family: var(--font-mono);">${checkInTime}</td>
+        <td style="font-family: var(--font-mono);">${checkOutTime}</td>
+        <td style="font-family: var(--font-mono); font-weight: 600;">${duration}</td>
+        <td style="font-style: italic; line-height: 1.4; max-width: 400px; word-break: break-word;">${report}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+  
+  wrapper.style.display = 'block';
+  wrapper.scrollIntoView({ behavior: 'smooth' });
+}
+
 async function loadPerformanceReports() {
   try {
     const res = await fetch('/api/admin/monthly-reports');
@@ -826,6 +1028,11 @@ async function loadPerformanceReports() {
       `;
       tbody.appendChild(row);
     });
+
+    // Populate helper graphs and dropdown structures
+    renderInternsComparisonChart(data.reports);
+    populateTimesheetDropdowns(data.reports);
+
   } catch (err) {
     console.error('Error loading performance evaluations:', err);
   }

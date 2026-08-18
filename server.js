@@ -511,6 +511,49 @@ app.delete('/api/admin/attendance/:id', async (req, res) => {
   }
 });
 
+// Admin: Get Detailed Monthly Timesheet for an Intern
+app.get('/api/admin/timesheet/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { year, month } = req.query; // month is 0-indexed (e.g. '0' for Jan, '7' for Aug)
+    
+    if (!userId || !year || !month) {
+      return res.status(400).json({ error: 'User ID, year, and month are required' });
+    }
+    
+    const users = await db.getCollection('users');
+    const user = users.find(u => {
+      const uId = u._id ? u._id.toString() : u.id;
+      return uId === userId;
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const attendance = await db.getCollection('attendance');
+    
+    // Filter user attendance for the target month and year
+    const targetMonthStr = String(Number(month) + 1).padStart(2, '0');
+    const prefix = `${year}-${targetMonthStr}`;
+    
+    const logs = attendance
+      .filter(a => a.userId === userId && a.date.startsWith(prefix))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+    res.json({
+      intern: {
+        name: user.name,
+        email: user.email,
+        domain: user.domain
+      },
+      logs
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback HTML page routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

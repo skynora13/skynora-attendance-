@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -637,12 +638,100 @@
           </div>
 
           <!-- PERFORMANCE REPORTS TAB -->
+          <!-- MONTHLY REPORTS TAB -->
           <div id="admin-reports" class="admin-tab-content hidden">
             <div class="section-title-row">
-              <h1>Monthly Performance Reporting</h1>
-              <p>Aggregates attendance metrics and task completions to calculate stipend & bonus ratings.</p>
+              <h1>Monthly Performance & Timesheet Reporting</h1>
+              <p>Aggregates attendance metrics, generates detailed monthly timesheets, and compares intern performance.</p>
             </div>
 
+            <!-- Chart Row -->
+            <div class="grid-card" style="margin-bottom: 24px;">
+              <div class="card-header">
+                <h2>Intern Performance & Hours Comparison Chart</h2>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 320px; width: 100%;">
+                  <canvas id="interns-comparison-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timesheet Generator Row -->
+            <div class="grid-card" style="margin-bottom: 24px;">
+              <div class="card-header">
+                <h2>Detailed Monthly Timesheet Report Generator</h2>
+              </div>
+              <div class="card-body">
+                <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: flex-end;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="report-intern-select">Select Intern</label>
+                    <select id="report-intern-select">
+                      <option value="">-- Choose an Intern --</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="report-month-select">Select Month</label>
+                    <select id="report-month-select">
+                      <!-- Current and past months -->
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <button class="btn btn-primary" id="generate-timesheet-btn" style="width: 100%;">Generate Timesheet</button>
+                  </div>
+                </div>
+
+                <!-- Generated Timesheet Display -->
+                <div id="timesheet-report-wrapper" style="display: none; margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <h3 id="timesheet-report-title" style="margin: 0; font-size: 16px; font-weight: 700;">Monthly Timesheet Report</h3>
+                    <button class="btn btn-secondary btn-sm" id="print-timesheet-btn">Print / Export PDF</button>
+                  </div>
+                  
+                  <div id="printable-timesheet-area" style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px;">
+                    <!-- Company Branding Header for PDF -->
+                    <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--accent-color); padding-bottom: 12px; margin-bottom: 20px;">
+                      <div>
+                        <h2 style="margin: 0; color: var(--accent-color); font-weight: 800; letter-spacing: -0.04em;">skynora.</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-secondary);">Remote Intern Attendance & Timesheet Log</p>
+                      </div>
+                      <div style="text-align: right;">
+                        <h4 style="margin: 0; font-weight: 700; font-size: 13px;">OFFICIAL REPORT</h4>
+                        <p id="timesheet-meta-generated-date" style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-secondary);"></p>
+                      </div>
+                    </div>
+
+                    <!-- Meta Detail Rows -->
+                    <div class="form-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; font-size: 12px;">
+                      <div><strong>Intern Name:</strong> <span id="timesheet-meta-name"></span></div>
+                      <div><strong>Intern Email:</strong> <span id="timesheet-meta-email"></span></div>
+                      <div><strong>System Domain:</strong> <span id="timesheet-meta-domain"></span></div>
+                      <div><strong>Target Month:</strong> <span id="timesheet-meta-month"></span></div>
+                    </div>
+
+                    <!-- Detailed Table -->
+                    <div class="overflow-x">
+                      <table class="data-table" id="timesheet-table">
+                        <thead>
+                          <tr>
+                            <th>Date / Day</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Total Hours</th>
+                            <th>Daily Work Done (Daily Report)</th>
+                          </tr>
+                        </thead>
+                        <tbody id="timesheet-table-body">
+                          <!-- Timesheet rows -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Decision Matrix Row -->
             <div class="grid-card">
               <div class="card-header">
                 <h2>Performance Summary & Stipend Decision Matrix</h2>
