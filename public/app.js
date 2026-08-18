@@ -1013,28 +1013,25 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
   const prevBtn = document.getElementById(`${prefix}-prev-month-btn`);
   const nextBtn = document.getElementById(`${prefix}-next-month-btn`);
   
-  // Re-attach listeners using clones to clear old event attachments
+  // Set direct onclick handlers (Fixes navigation click conflicts 100% reliably)
   if (prevBtn && nextBtn) {
-    const newPrevBtn = prevBtn.cloneNode(true);
-    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
-    const newNextBtn = nextBtn.cloneNode(true);
-    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
-    
-    newPrevBtn.addEventListener('click', () => {
+    prevBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       displayDate.setMonth(displayDate.getMonth() - 1);
       drawCells();
-    });
-    
-    newNextBtn.addEventListener('click', () => {
+    };
+    nextBtn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       displayDate.setMonth(displayDate.getMonth() + 1);
       drawCells();
-    });
+    };
   }
 
   // Setup hover flip on the tear off card
   const cardElement = document.getElementById(`${prefix}-tear-off-card`);
   if (cardElement) {
-    // Remove existing event classes to avoid conflicts
     cardElement.classList.remove('flipped');
     
     cardElement.addEventListener('mouseenter', () => {
@@ -1066,6 +1063,7 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     const frontHeader = document.getElementById(`${prefix}-tear-header`);
     const frontDay = document.getElementById(`${prefix}-tear-day`);
     const frontFooter = document.getElementById(`${prefix}-tear-footer`);
+    const frontDetails = document.getElementById(`${prefix}-tear-front-details`);
     
     const backHeader = document.getElementById(`${prefix}-tear-header-back`);
     const backDay = document.getElementById(`${prefix}-tear-back-day`);
@@ -1078,7 +1076,7 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     if (frontDay) frontDay.textContent = `${day}${suffix}`;
     if (frontFooter) frontFooter.textContent = year;
     
-    if (backHeader) backHeader.textContent = attRecord ? 'PRESENT' : (leaveRecord ? 'LEAVE' : 'NO RECORD');
+    if (backHeader) backHeader.textContent = attRecord ? 'WORK REPORT' : (leaveRecord ? 'LEAVE REASON' : 'NO REPORT');
     if (backDay) backDay.textContent = `${day}${suffix}`;
     if (backFooter) backFooter.textContent = year;
     
@@ -1087,33 +1085,56 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     if (frontHeader) frontHeader.style.backgroundColor = headerColor;
     if (backHeader) backHeader.style.backgroundColor = headerColor;
     
-    let statsHtml = '';
+    // FRONT DETAILS: Show Check-in, Check-out, and Duration directly!
+    let frontDetailsHtml = '';
     if (attRecord) {
       const checkInLocal = new Date(attRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const checkOutLocal = attRecord.checkOut 
         ? new Date(attRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
         : 'Active';
-      const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs logged` : 'Session Active';
+      const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs` : 'Active';
       
-      statsHtml = `
-        <div style="font-weight:700; margin-bottom:8px; color:var(--status-success);">SESSION DETAILS</div>
-        <div style="margin: 4px 0; font-size:11px;">Check-In: <b>${checkInLocal}</b></div>
-        <div style="margin: 4px 0; font-size:11px;">Check-Out: <b>${checkOutLocal}</b></div>
-        <div style="font-weight:700; margin-top:8px; color:var(--status-success);">${hoursLogged}</div>
+      frontDetailsHtml = `
+        <div style="font-weight:700; margin: 3px 0; color:var(--status-success); font-size:11px;">In: ${checkInLocal}</div>
+        <div style="font-weight:700; margin: 3px 0; color:var(--status-success); font-size:11px;">Out: ${checkOutLocal}</div>
+        <div style="font-weight:700; margin-top:5px; font-size:12px; color:var(--text-primary);">Duration: ${hoursLogged}</div>
       `;
     } else if (leaveRecord) {
-      statsHtml = `
-        <div style="font-weight:700; margin-bottom:8px; color:var(--status-danger);">APPROVED LEAVE</div>
-        <div style="font-style:italic; max-width:180px; word-break:break-word; font-size:11px;">"${escapeHtml(leaveRecord.reason)}"</div>
+      frontDetailsHtml = `
+        <div style="font-weight:700; color:var(--status-danger); font-size:11px;">APPROVED LEAVE</div>
+        <div style="font-size:10px; margin-top:2px; color:var(--text-secondary);">Holiday / Sick Off</div>
       `;
     } else {
-      statsHtml = `
-        <div style="font-weight:600; color:var(--text-secondary); margin-bottom:4px;">No Logs Recorded</div>
-        <div style="font-size:11px;">No check-in or leave logs found for this date.</div>
+      frontDetailsHtml = `
+        <div style="color:var(--text-secondary); font-weight:600; font-size:11px;">NO LOGS</div>
+        <div style="font-size:10px; margin-top:2px; color:var(--text-secondary);">Unchecked session</div>
       `;
     }
+    if (frontDetails) frontDetails.innerHTML = frontDetailsHtml;
     
-    if (backStats) backStats.innerHTML = statsHtml;
+    // BACK DETAILS: Show Daily Report text or Leave Reason text!
+    let backStatsHtml = '';
+    if (attRecord) {
+      const reportText = attRecord.dailyReport ? escapeHtml(attRecord.dailyReport) : 'No work report submitted yet.';
+      backStatsHtml = `
+        <div style="font-weight:700; margin-bottom:4px; font-size:10px; color:var(--text-primary); text-transform:uppercase;">Work Report</div>
+        <div style="font-size:10px; max-height:85px; overflow-y:auto; font-style:italic; line-height:1.4; color:var(--text-secondary); text-align:left; width:100%; border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; background-color: var(--bg-secondary); box-sizing:border-box;">
+          ${reportText}
+        </div>
+      `;
+    } else if (leaveRecord) {
+      backStatsHtml = `
+        <div style="font-weight:700; margin-bottom:4px; font-size:10px; color:var(--text-primary); text-transform:uppercase;">Reason</div>
+        <div style="font-size:10px; max-height:85px; overflow-y:auto; font-style:italic; line-height:1.4; color:var(--text-secondary); text-align:left; width:100%; border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; background-color: var(--bg-secondary); box-sizing:border-box;">
+          ${escapeHtml(leaveRecord.reason)}
+        </div>
+      `;
+    } else {
+      backStatsHtml = `
+        <div style="font-weight:600; color:var(--text-secondary); font-size:11px;">No logs recorded</div>
+      `;
+    }
+    if (backStats) backStats.innerHTML = backStatsHtml;
   }
   
   function drawCells() {
