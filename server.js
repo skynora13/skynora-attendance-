@@ -421,6 +421,9 @@ app.get('/api/admin/monthly-reports', (req, res) => {
     };
   });
 
+  res.json({ reports });
+});
+
 // Admin: Delete Intern
 app.delete('/api/admin/delete-intern/:id', (req, res) => {
   const internId = req.params.id;
