@@ -19,13 +19,13 @@ function getTodayDate() {
 
 // APIs
 // Auth
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
-  const users = db.getCollection('users');
+  const users = await db.getCollection('users');
   const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
 
   if (!user) {
@@ -38,13 +38,13 @@ app.post('/api/login', (req, res) => {
 });
 
 // Admin: Create Intern
-app.post('/api/admin/create-intern', (req, res) => {
+app.post('/api/admin/create-intern', async (req, res) => {
   const { email, password, name, domain } = req.body;
   if (!email || !password || !name || !domain) {
     return res.status(400).json({ error: 'All fields (email, password, name, domain) are required' });
   }
 
-  const users = db.getCollection('users');
+  const users = await db.getCollection('users');
   if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
     return res.status(400).json({ error: 'User with this email already exists' });
   }
@@ -58,30 +58,30 @@ app.post('/api/admin/create-intern', (req, res) => {
     domain
   };
 
-  db.insert('users', newIntern);
+  await db.insert('users', newIntern);
   const { password: _, ...newInternSafe } = newIntern;
   res.status(201).json({ success: true, user: newInternSafe });
 });
 
 // Intern: Status
-app.get('/api/intern/status/:userId', (req, res) => {
+app.get('/api/intern/status/:userId', async (req, res) => {
   const { userId } = req.params;
   const today = getTodayDate();
-  const attendanceList = db.getCollection('attendance');
+  const attendanceList = await db.getCollection('attendance');
   
   const todayRecord = attendanceList.find(a => a.userId === userId && a.date === today);
   res.json({ todayRecord: todayRecord || null });
 });
 
 // Intern: Check-In
-app.post('/api/intern/check-in', (req, res) => {
+app.post('/api/intern/check-in', async (req, res) => {
   const { userId } = req.body;
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
 
   const today = getTodayDate();
-  const attendanceList = db.getCollection('attendance');
+  const attendanceList = await db.getCollection('attendance');
   
   // Check if already checked in today
   let todayRecord = attendanceList.find(a => a.userId === userId && a.date === today);
@@ -99,19 +99,19 @@ app.post('/api/intern/check-in', (req, res) => {
     totalHours: null
   };
 
-  db.insert('attendance', newRecord);
+  await db.insert('attendance', newRecord);
   res.status(201).json({ success: true, record: newRecord });
 });
 
 // Intern: Check-Out + Daily Report
-app.post('/api/intern/check-out', (req, res) => {
+app.post('/api/intern/check-out', async (req, res) => {
   const { userId, dailyReport } = req.body;
   if (!userId || !dailyReport) {
     return res.status(400).json({ error: 'User ID and daily report are required' });
   }
 
   const today = getTodayDate();
-  const attendanceList = db.getCollection('attendance');
+  const attendanceList = await db.getCollection('attendance');
   const recordIndex = attendanceList.findIndex(a => a.userId === userId && a.date === today);
 
   if (recordIndex === -1) {
@@ -138,13 +138,13 @@ app.post('/api/intern/check-out', (req, res) => {
   };
 
   attendanceList[recordIndex] = updatedRecord;
-  db.saveCollection('attendance', attendanceList);
+  await db.saveCollection('attendance', attendanceList);
 
   res.json({ success: true, record: updatedRecord });
 });
 
 // Intern: Leave submission
-app.post('/api/intern/leave', (req, res) => {
+app.post('/api/intern/leave', async (req, res) => {
   const { userId, startDate, endDate, reason } = req.body;
   if (!userId || !startDate || !endDate || !reason) {
     return res.status(400).json({ error: 'All fields are required' });
@@ -160,28 +160,28 @@ app.post('/api/intern/leave', (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  db.insert('leaves', newLeave);
+  await db.insert('leaves', newLeave);
   res.status(201).json({ success: true, leave: newLeave });
 });
 
 // Intern: Get Leaves
-app.get('/api/intern/leaves/:userId', (req, res) => {
+app.get('/api/intern/leaves/:userId', async (req, res) => {
   const { userId } = req.params;
-  const leaves = db.getCollection('leaves');
+  const leaves = await db.getCollection('leaves');
   const userLeaves = leaves.filter(l => l.userId === userId).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ leaves: userLeaves });
 });
 
 // Intern: Get Tasks
-app.get('/api/intern/tasks/:userId', (req, res) => {
+app.get('/api/intern/tasks/:userId', async (req, res) => {
   const { userId } = req.params;
-  const tasks = db.getCollection('tasks');
+  const tasks = await db.getCollection('tasks');
   const userTasks = tasks.filter(t => t.userId === userId).sort((a,b) => new Date(b.assignedAt) - new Date(a.assignedAt));
   res.json({ tasks: userTasks });
 });
 
 // Intern: Update Task Status
-app.post('/api/intern/tasks/update', (req, res) => {
+app.post('/api/intern/tasks/update', async (req, res) => {
   const { taskId, status } = req.body;
   if (!taskId || !status) {
     return res.status(400).json({ error: 'Task ID and status are required' });
@@ -192,7 +192,7 @@ app.post('/api/intern/tasks/update', (req, res) => {
     return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
   }
 
-  const updated = db.update('tasks', taskId, {
+  const updated = await db.update('tasks', taskId, {
     status,
     statusUpdatedAt: new Date().toISOString()
   });
@@ -205,13 +205,13 @@ app.post('/api/intern/tasks/update', (req, res) => {
 });
 
 // User: Change Password
-app.post('/api/user/change-password', (req, res) => {
+app.post('/api/user/change-password', async (req, res) => {
   const { userId, newPassword } = req.body;
   if (!userId || !newPassword) {
     return res.status(400).json({ error: 'User ID and new password are required' });
   }
 
-  const updated = db.update('users', userId, { password: newPassword });
+  const updated = await db.update('users', userId, { password: newPassword });
   if (!updated) {
     return res.status(404).json({ error: 'User not found' });
   }
@@ -220,10 +220,10 @@ app.post('/api/user/change-password', (req, res) => {
 });
 
 // Admin: Get Interns and their summary
-app.get('/api/admin/interns', (req, res) => {
-  const users = db.getCollection('users').filter(u => u.role === 'intern');
-  const attendanceList = db.getCollection('attendance');
-  const tasks = db.getCollection('tasks');
+app.get('/api/admin/interns', async (req, res) => {
+  const users = (await db.getCollection('users')).filter(u => u.role === 'intern');
+  const attendanceList = await db.getCollection('attendance');
+  const tasks = await db.getCollection('tasks');
 
   const internsSummary = users.map(user => {
     const userAttendance = attendanceList.filter(a => a.userId === user.id);
@@ -246,11 +246,11 @@ app.get('/api/admin/interns', (req, res) => {
 });
 
 // Admin: Full Dashboard details
-app.get('/api/admin/dashboard', (req, res) => {
-  const users = db.getCollection('users');
-  const attendance = db.getCollection('attendance');
-  const leaves = db.getCollection('leaves');
-  const tasks = db.getCollection('tasks');
+app.get('/api/admin/dashboard', async (req, res) => {
+  const users = await db.getCollection('users');
+  const attendance = await db.getCollection('attendance');
+  const leaves = await db.getCollection('leaves');
+  const tasks = await db.getCollection('tasks');
 
   const interns = users.filter(u => u.role === 'intern');
 
@@ -305,13 +305,13 @@ app.get('/api/admin/dashboard', (req, res) => {
 });
 
 // Admin: Assign Task
-app.post('/api/admin/tasks/assign', (req, res) => {
+app.post('/api/admin/tasks/assign', async (req, res) => {
   const { userId, title, description } = req.body;
   if (!userId || !title || !description) {
     return res.status(400).json({ error: 'User ID, title, and description are required' });
   }
 
-  const users = db.getCollection('users');
+  const users = await db.getCollection('users');
   const intern = users.find(u => u.id === userId && u.role === 'intern');
   if (!intern) {
     return res.status(400).json({ error: 'Valid intern ID is required' });
@@ -328,12 +328,12 @@ app.post('/api/admin/tasks/assign', (req, res) => {
     notes: null
   };
 
-  db.insert('tasks', newTask);
+  await db.insert('tasks', newTask);
   res.status(201).json({ success: true, task: newTask });
 });
 
 // Admin: Review Leaves
-app.post('/api/admin/leaves/review', (req, res) => {
+app.post('/api/admin/leaves/review', async (req, res) => {
   const { leaveId, status } = req.body;
   if (!leaveId || !status) {
     return res.status(400).json({ error: 'Leave ID and status are required' });
@@ -343,7 +343,7 @@ app.post('/api/admin/leaves/review', (req, res) => {
     return res.status(400).json({ error: 'Status must be approved or rejected' });
   }
 
-  const updated = db.update('leaves', leaveId, { status });
+  const updated = await db.update('leaves', leaveId, { status });
   if (!updated) {
     return res.status(404).json({ error: 'Leave request not found' });
   }
@@ -352,11 +352,11 @@ app.post('/api/admin/leaves/review', (req, res) => {
 });
 
 // Admin: Monthly Reports
-app.get('/api/admin/monthly-reports', (req, res) => {
-  const users = db.getCollection('users').filter(u => u.role === 'intern');
-  const attendance = db.getCollection('attendance');
-  const tasks = db.getCollection('tasks');
-  const leaves = db.getCollection('leaves');
+app.get('/api/admin/monthly-reports', async (req, res) => {
+  const users = (await db.getCollection('users')).filter(u => u.role === 'intern');
+  const attendance = await db.getCollection('attendance');
+  const tasks = await db.getCollection('tasks');
+  const leaves = await db.getCollection('leaves');
 
   // Aggregate monthly report metrics for each intern
   const reports = users.map(user => {
@@ -425,32 +425,32 @@ app.get('/api/admin/monthly-reports', (req, res) => {
 });
 
 // Admin: Delete Intern
-app.delete('/api/admin/delete-intern/:id', (req, res) => {
+app.delete('/api/admin/delete-intern/:id', async (req, res) => {
   const internId = req.params.id;
   
   // 1. Delete user
-  const users = db.getCollection('users');
+  const users = await db.getCollection('users');
   const userExists = users.some(u => u.id === internId && u.role === 'intern');
   if (!userExists) {
     return res.status(404).json({ error: 'Intern not found' });
   }
   const updatedUsers = users.filter(u => u.id !== internId);
-  db.saveCollection('users', updatedUsers);
+  await db.saveCollection('users', updatedUsers);
 
   // 2. Delete attendance records
-  const attendance = db.getCollection('attendance');
+  const attendance = await db.getCollection('attendance');
   const updatedAttendance = attendance.filter(a => a.userId !== internId);
-  db.saveCollection('attendance', updatedAttendance);
+  await db.saveCollection('attendance', updatedAttendance);
 
   // 3. Delete tasks
-  const tasks = db.getCollection('tasks');
+  const tasks = await db.getCollection('tasks');
   const updatedTasks = tasks.filter(t => t.userId !== internId);
-  db.saveCollection('tasks', updatedTasks);
+  await db.saveCollection('tasks', updatedTasks);
 
   // 4. Delete leaves
-  const leaves = db.getCollection('leaves');
+  const leaves = await db.getCollection('leaves');
   const updatedLeaves = leaves.filter(l => l.userId !== internId);
-  db.saveCollection('leaves', updatedLeaves);
+  await db.saveCollection('leaves', updatedLeaves);
 
   res.json({ success: true, message: 'Intern deleted successfully' });
 });

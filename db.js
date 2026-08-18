@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const { MongoClient } = require('mongodb');
 
 const DB_DIR = path.join(__dirname, 'data');
 const DB_PATH = path.join(DB_DIR, 'database.json');
 
-// Ensure database directory exists
+// Ensure local database directory exists
 if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
@@ -65,6 +66,7 @@ const defaultData = {
   ]
 };
 
+// Local Database Helpers (Sync)
 function readDb() {
   if (!fs.existsSync(DB_PATH)) {
     writeDb(defaultData);
@@ -104,24 +106,111 @@ function writeDb(data) {
   fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
 }
 
+// MongoDB Connection State
+const MONGODB_URI = process.env.MONGODB_URI;
+let client = null;
+let mongoDb = null;
+let useMongo = false;
+
+if (MONGODB_URI) {
+  useMongo = true;
+  client = new MongoClient(MONGODB_URI);
+}
+
+async function connectDb() {
+  if (!useMongo) return null;
+  if (mongoDb) return mongoDb;
+  try {
+    await client.connect();
+    mongoDb = client.db();
+    console.log('Connected successfully to MongoDB Cloud');
+    
+    // Seed default data if collections do not exist
+    await seedMongoDefaults();
+    return mongoDb;
+  } catch (err) {
+    console.error('Failed to connect to MongoDB, falling back to local file:', err);
+    useMongo = false;
+    return null;
+  }
+}
+
+async function seedMongoDefaults() {
+  try {
+    const collections = await mongoDb.listCollections().toArray();
+    const hasUsers = collections.some(c => c.name === 'users');
+    if (!hasUsers) {
+      console.log('Seeding default data into MongoDB...');
+      await mongoDb.collection('users').insertMany(defaultData.users);
+      await mongoDb.collection('attendance').insertMany(defaultData.attendance);
+      await mongoDb.collection('leaves').insertMany(defaultData.leaves);
+      await mongoDb.collection('tasks').insertMany(defaultData.tasks);
+    }
+  } catch (e) {
+    console.error('Error seeding defaults to MongoDB:', e);
+  }
+}
+
+// Initialize connection if using Mongo
+if (useMongo) {
+  connectDb().catch(err => console.error("Initial DB connection failed:", err));
+}
+
 module.exports = {
-  getCollection: (name) => {
+  getCollection: async (name) => {
+    if (useMongo) {
+      const dbInstance = await connectDb();
+      if (dbInstance) {
+        return await dbInstance.collection(name).find({}).toArray();
+      }
+    }
     const db = readDb();
     return db[name] || [];
   },
-  saveCollection: (name, items) => {
+  
+  saveCollection: async (name, items) => {
+    if (useMongo) {
+      const dbInstance = await connectDb();
+      if (dbInstance) {
+        await dbInstance.collection(name).deleteMany({});
+        if (items.length > 0) {
+          await dbInstance.collection(name).insertMany(items);
+        }
+        return;
+      }
+    }
     const db = readDb();
     db[name] = items;
     writeDb(db);
   },
-  insert: (name, item) => {
+  
+  insert: async (name, item) => {
+    if (useMongo) {
+      const dbInstance = await connectDb();
+      if (dbInstance) {
+        await dbInstance.collection(name).insertOne({ ...item });
+        return item;
+      }
+    }
     const db = readDb();
     if (!db[name]) db[name] = [];
     db[name].push(item);
     writeDb(db);
     return item;
   },
-  update: (name, id, updateData) => {
+  
+  update: async (name, id, updateData) => {
+    if (useMongo) {
+      const dbInstance = await connectDb();
+      if (dbInstance) {
+        const result = await dbInstance.collection(name).findOneAndUpdate(
+          { id: id },
+          { $set: updateData },
+          { returnDocument: 'after' }
+        );
+        return result;
+      }
+    }
     const db = readDb();
     const index = db[name].findIndex(item => item.id === id);
     if (index !== -1) {
