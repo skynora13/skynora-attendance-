@@ -1109,23 +1109,10 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     }
   }
 
-  // Setup hover flip on the tear off card
+  // Setup static card (No flipping event listeners needed)
   const cardElement = document.getElementById(`${prefix}-tear-off-card`);
   if (cardElement) {
     cardElement.classList.remove('flipped');
-    
-    cardElement.addEventListener('mouseenter', () => {
-      cardElement.classList.add('flipped');
-    });
-    cardElement.addEventListener('mouseleave', () => {
-      cardElement.classList.remove('flipped');
-    });
-    // Support mobile tapping
-    cardElement.addEventListener('click', (e) => {
-      // Don't flip when clicking the header navigation buttons
-      if (e.target.closest('.grid-nav-btn')) return;
-      cardElement.classList.toggle('flipped');
-    });
   }
   
   function getDaySuffix(day) {
@@ -1147,27 +1134,17 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     const frontFooter = document.getElementById(`${prefix}-tear-footer`);
     const frontDetails = document.getElementById(`${prefix}-tear-front-details`);
     
-    const backHeader = document.getElementById(`${prefix}-tear-header-back`);
-    const backDay = document.getElementById(`${prefix}-tear-back-day`);
-    const backStats = document.getElementById(`${prefix}-tear-stats`);
-    const backFooter = document.getElementById(`${prefix}-tear-footer-back`);
-    
     const monthName = monthsFull[month];
     
     if (frontHeader) frontHeader.textContent = monthName;
     if (frontDay) frontDay.textContent = `${day}${suffix}`;
     if (frontFooter) frontFooter.textContent = year;
     
-    if (backHeader) backHeader.textContent = attRecord ? 'WORK REPORT' : (leaveRecord ? 'LEAVE REASON' : 'NO REPORT');
-    if (backDay) backDay.textContent = `${day}${suffix}`;
-    if (backFooter) backFooter.textContent = year;
-    
     // Change coloring dynamically
     const headerColor = attRecord ? '#12b07e' : (leaveRecord ? '#e74c3c' : '#6366f1');
     if (frontHeader) frontHeader.style.backgroundColor = headerColor;
-    if (backHeader) backHeader.style.backgroundColor = headerColor;
     
-    // FRONT DETAILS: Show Check-in, Check-out, and Duration directly!
+    // FRONT DETAILS: Show Check-in, Check-out, Duration AND Daily report/reason directly!
     let frontDetailsHtml = '';
     if (attRecord) {
       const checkInLocal = new Date(attRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1175,48 +1152,39 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
         ? new Date(attRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
         : 'Active';
       const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs` : 'Active';
+      const reportText = attRecord.dailyReport ? escapeHtml(attRecord.dailyReport) : 'No work report submitted yet.';
       
       frontDetailsHtml = `
-        <div style="font-weight:700; margin: 3px 0; color:var(--status-success); font-size:11px;">In: ${checkInLocal}</div>
-        <div style="font-weight:700; margin: 3px 0; color:var(--status-success); font-size:11px;">Out: ${checkOutLocal}</div>
-        <div style="font-weight:700; margin-top:5px; font-size:12px; color:var(--text-primary);">Duration: ${hoursLogged}</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; box-sizing: border-box; padding: 0 4px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--status-success);">In: <span style="font-weight: 600; color: var(--text-primary);">${checkInLocal}</span></div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--status-success);">Out: <span style="font-weight: 600; color: var(--text-primary);">${checkOutLocal}</span></div>
+          <div style="font-size: 11px; font-weight: 700; color: var(--status-success); margin-bottom: 4px;">Hrs: <span style="font-weight: 600; color: var(--text-primary);">${hoursLogged}</span></div>
+          
+          <div style="font-size: 9px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-top: 1px solid var(--border-color); padding-top: 4px; margin-top: 2px;">Report:</div>
+          <div style="font-size: 9px; max-height: 50px; overflow-y: auto; font-style: italic; line-height: 1.3; color: var(--text-secondary); padding: 4px; border-radius: 4px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); word-break: break-word;">
+            ${reportText}
+          </div>
+        </div>
       `;
     } else if (leaveRecord) {
       frontDetailsHtml = `
-        <div style="font-weight:700; color:var(--status-danger); font-size:11px;">APPROVED LEAVE</div>
-        <div style="font-size:10px; margin-top:2px; color:var(--text-secondary);">Holiday / Sick Off</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; box-sizing: border-box; padding: 0 4px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--status-danger); text-align: center; margin-bottom: 4px;">APPROVED LEAVE</div>
+          <div style="font-size: 9px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-top: 1px solid var(--border-color); padding-top: 4px;">Reason:</div>
+          <div style="font-size: 9px; max-height: 50px; overflow-y: auto; font-style: italic; line-height: 1.3; color: var(--text-secondary); padding: 4px; border-radius: 4px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); word-break: break-word;">
+            ${escapeHtml(leaveRecord.reason)}
+          </div>
+        </div>
       `;
     } else {
       frontDetailsHtml = `
-        <div style="color:var(--text-secondary); font-weight:600; font-size:11px;">NO LOGS</div>
-        <div style="font-size:10px; margin-top:2px; color:var(--text-secondary);">Unchecked session</div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 90px; text-align: center;">
+          <div style="color: var(--text-secondary); font-weight: 700; font-size: 11px;">NO RECORD</div>
+          <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">Did not check in or submit leave.</div>
+        </div>
       `;
     }
     if (frontDetails) frontDetails.innerHTML = frontDetailsHtml;
-    
-    // BACK DETAILS: Show Daily Report text or Leave Reason text!
-    let backStatsHtml = '';
-    if (attRecord) {
-      const reportText = attRecord.dailyReport ? escapeHtml(attRecord.dailyReport) : 'No work report submitted yet.';
-      backStatsHtml = `
-        <div style="font-weight:700; margin-bottom:4px; font-size:10px; color:var(--text-primary); text-transform:uppercase;">Work Report</div>
-        <div style="font-size:10px; max-height:85px; overflow-y:auto; font-style:italic; line-height:1.4; color:var(--text-secondary); text-align:left; width:100%; border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; background-color: var(--bg-secondary); box-sizing:border-box;">
-          ${reportText}
-        </div>
-      `;
-    } else if (leaveRecord) {
-      backStatsHtml = `
-        <div style="font-weight:700; margin-bottom:4px; font-size:10px; color:var(--text-primary); text-transform:uppercase;">Reason</div>
-        <div style="font-size:10px; max-height:85px; overflow-y:auto; font-style:italic; line-height:1.4; color:var(--text-secondary); text-align:left; width:100%; border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; background-color: var(--bg-secondary); box-sizing:border-box;">
-          ${escapeHtml(leaveRecord.reason)}
-        </div>
-      `;
-    } else {
-      backStatsHtml = `
-        <div style="font-weight:600; color:var(--text-secondary); font-size:11px;">No logs recorded</div>
-      `;
-    }
-    if (backStats) backStats.innerHTML = backStatsHtml;
   }
   
   function drawCells() {
@@ -1273,15 +1241,7 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
         selectedDayCell = cell;
         
         currentSelectedDay = day; // Track the currently selected day
-        
-        // Flip card effect trigger
-        cardElement.classList.add('flipped');
-        setTimeout(() => {
-          updateTearOffCard(day, month, year, attRecord, leaveRecord);
-          setTimeout(() => {
-            cardElement.classList.remove('flipped');
-          }, 300);
-        }, 150);
+        updateTearOffCard(day, month, year, attRecord, leaveRecord);
       });
       
       // Auto-select today
