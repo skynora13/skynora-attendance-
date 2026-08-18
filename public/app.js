@@ -1009,6 +1009,7 @@ async function loadAdminInternCalendar(internId, internName) {
 // Double Card Calendar Controller (Matches the hover.dev look & feel)
 function initDoubleCalendar(prefix, attendanceList, leavesList) {
   let displayDate = new Date();
+  let currentSelectedDay = new Date().getDate();
   
   const prevBtn = document.getElementById(`${prefix}-prev-month-btn`);
   const nextBtn = document.getElementById(`${prefix}-next-month-btn`);
@@ -1029,6 +1030,71 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     };
   }
 
+  // Bind day-by-day navigation button clicks on the card itself
+  const bindDayNavigation = (btnId, step) => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const year = displayDate.getFullYear();
+        const month = displayDate.getMonth();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        
+        let targetDay = currentSelectedDay + step;
+        if (targetDay < 1) {
+          // Go to last day of previous month
+          displayDate.setMonth(displayDate.getMonth() - 1);
+          const prevMonthDays = new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 0).getDate();
+          currentSelectedDay = prevMonthDays;
+          drawCells();
+        } else if (targetDay > totalDays) {
+          // Go to first day of next month
+          displayDate.setMonth(displayDate.getMonth() + 1);
+          currentSelectedDay = 1;
+          drawCells();
+        } else {
+          currentSelectedDay = targetDay;
+          selectDayCell(currentSelectedDay);
+        }
+      };
+    }
+  };
+
+  bindDayNavigation(`${prefix}-prev-day-btn`, -1);
+  bindDayNavigation(`${prefix}-next-day-btn`, 1);
+  bindDayNavigation(`${prefix}-prev-day-btn-back`, -1);
+  bindDayNavigation(`${prefix}-next-day-btn-back`, 1);
+
+  function selectDayCell(day) {
+    const cellsContainer = document.getElementById(`${prefix}-grid-cells`);
+    if (!cellsContainer) return;
+    
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const cellIndex = firstDayIndex + (day - 1);
+    
+    const targetCell = cellsContainer.children[cellIndex];
+    if (targetCell && !targetCell.classList.contains('empty')) {
+      cellsContainer.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('selected'));
+      targetCell.classList.add('selected');
+      
+      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const cellDateObj = new Date(year, month, day);
+      const attRecord = attendanceList.find(a => a.date === dateString);
+      const leaveRecord = leavesList.find(l => {
+        const start = new Date(l.startDate);
+        const end = new Date(l.endDate);
+        return l.status === 'approved' && cellDateObj >= start && cellDateObj <= end;
+      });
+      
+      currentSelectedDay = day;
+      updateTearOffCard(day, month, year, attRecord, leaveRecord);
+    }
+  }
+
   // Setup hover flip on the tear off card
   const cardElement = document.getElementById(`${prefix}-tear-off-card`);
   if (cardElement) {
@@ -1041,7 +1107,9 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
       cardElement.classList.remove('flipped');
     });
     // Support mobile tapping
-    cardElement.addEventListener('click', () => {
+    cardElement.addEventListener('click', (e) => {
+      // Don't flip when clicking the header navigation buttons
+      if (e.target.closest('.grid-nav-btn')) return;
       cardElement.classList.toggle('flipped');
     });
   }
@@ -1189,6 +1257,8 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
         }
         cell.classList.add('selected');
         selectedDayCell = cell;
+        
+        currentSelectedDay = day; // Track the currently selected day
         
         // Flip card effect trigger
         cardElement.classList.add('flipped');
