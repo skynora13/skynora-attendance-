@@ -234,12 +234,13 @@ app.get('/api/admin/interns', async (req, res) => {
   const tasks = await db.getCollection('tasks');
 
   const internsSummary = users.map(user => {
-    const userAttendance = attendanceList.filter(a => a.userId === user.id);
+    const uId = user._id ? user._id.toString() : user.id;
+    const userAttendance = attendanceList.filter(a => a.userId === uId);
     const totalHours = userAttendance.reduce((sum, curr) => sum + (curr.totalHours || 0), 0);
-    const userTasks = tasks.filter(t => t.userId === user.id);
+    const userTasks = tasks.filter(t => t.userId === uId);
     
     return {
-      id: user.id,
+      id: uId,
       name: user.name,
       email: user.email,
       domain: user.domain,
@@ -265,7 +266,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
   // All check-ins today (including completed and active sessions)
   const today = getTodayDate();
   const todaySessions = attendance.filter(a => a.date === today).map(a => {
-    const intern = interns.find(i => i.id === a.userId);
+    const intern = interns.find(i => {
+      const uId = i._id ? i._id.toString() : i.id;
+      return uId === a.userId;
+    });
     return {
       ...a,
       internName: intern ? intern.name : 'Unknown',
@@ -281,7 +285,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
     const timeB = b.checkOut ? new Date(b.checkOut) : new Date(b.checkIn);
     return timeB - timeA;
   }).slice(0, 10).map(a => {
-    const intern = interns.find(i => i.id === a.userId);
+    const intern = interns.find(i => {
+      const uId = i._id ? i._id.toString() : i.id;
+      return uId === a.userId;
+    });
     return {
       ...a,
       internName: intern ? intern.name : 'Unknown',
@@ -291,7 +298,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   // All pending leaves
   const pendingLeaves = leaves.filter(l => l.status === 'pending').map(l => {
-    const intern = interns.find(i => i.id === l.userId);
+    const intern = interns.find(i => {
+      const uId = i._id ? i._id.toString() : i.id;
+      return uId === l.userId;
+    });
     return {
       ...l,
       internName: intern ? intern.name : 'Unknown',
@@ -301,7 +311,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   // All tasks list
   const allTasks = tasks.map(t => {
-    const intern = interns.find(i => i.id === t.userId);
+    const intern = interns.find(i => {
+      const uId = i._id ? i._id.toString() : i.id;
+      return uId === t.userId;
+    });
     return {
       ...t,
       internName: intern ? intern.name : 'Unknown',
@@ -375,9 +388,10 @@ app.get('/api/admin/monthly-reports', async (req, res) => {
 
   // Aggregate monthly report metrics for each intern
   const reports = users.map(user => {
-    const userAttendance = attendance.filter(a => a.userId === user.id);
-    const userTasks = tasks.filter(t => t.userId === user.id);
-    const userLeaves = leaves.filter(l => l.userId === user.id);
+    const uId = user._id ? user._id.toString() : user.id;
+    const userAttendance = attendance.filter(a => a.userId === uId);
+    const userTasks = tasks.filter(t => t.userId === uId);
+    const userLeaves = leaves.filter(l => l.userId === uId);
 
     // Group hours and days worked
     const totalHours = userAttendance.reduce((sum, a) => sum + (a.totalHours || 0), 0);
@@ -420,7 +434,7 @@ app.get('/api/admin/monthly-reports', async (req, res) => {
     else if (score < 50) recommendation = 'Base Stipend - Review Attendance';
 
     return {
-      userId: user.id,
+      userId: uId,
       name: user.name,
       email: user.email,
       domain: user.domain,
@@ -445,11 +459,17 @@ app.delete('/api/admin/delete-intern/:id', async (req, res) => {
   
   // 1. Delete user
   const users = await db.getCollection('users');
-  const userExists = users.some(u => u.id === internId && u.role === 'intern');
+  const userExists = users.some(u => {
+    const uId = u._id ? u._id.toString() : u.id;
+    return uId === internId && u.role === 'intern';
+  });
   if (!userExists) {
     return res.status(404).json({ error: 'Intern not found' });
   }
-  const updatedUsers = users.filter(u => u.id !== internId);
+  const updatedUsers = users.filter(u => {
+    const uId = u._id ? u._id.toString() : u.id;
+    return uId !== internId;
+  });
   await db.saveCollection('users', updatedUsers);
 
   // 2. Delete attendance records
@@ -468,6 +488,27 @@ app.delete('/api/admin/delete-intern/:id', async (req, res) => {
   await db.saveCollection('leaves', updatedLeaves);
 
   res.json({ success: true, message: 'Intern deleted successfully' });
+});
+
+// Admin: Delete Specific Attendance Record
+app.delete('/api/admin/attendance/:id', async (req, res) => {
+  try {
+    const attendance = await db.getCollection('attendance');
+    const index = attendance.findIndex(a => {
+      const aId = a._id ? a._id.toString() : a.id;
+      return aId === req.params.id;
+    });
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+    
+    attendance.splice(index, 1);
+    await db.saveCollection('attendance', attendance);
+    res.json({ success: true, message: 'Record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Fallback HTML page routing

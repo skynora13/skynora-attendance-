@@ -471,7 +471,7 @@ async function loadAdminOverview(cachedData) {
     const activeTbody = document.getElementById('active-checkins-body');
     activeTbody.innerHTML = '';
     if (data.activeCheckins.length === 0) {
-      activeTbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="padding:20px 0;">No work sessions recorded today.</td></tr>`;
+      activeTbody.innerHTML = `<tr><td colspan="6" class="empty-state" style="padding:20px 0;">No work sessions recorded today.</td></tr>`;
     } else {
       data.activeCheckins.forEach(ac => {
         const checkInTime = new Date(ac.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -487,6 +487,9 @@ async function loadAdminOverview(cachedData) {
           <td style="font-family:var(--font-mono);">${checkInTime}</td>
           <td style="font-family:var(--font-mono);">${checkOutTime}</td>
           <td style="font-family:var(--font-mono); font-weight:600;">${duration}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm delete-session-btn" data-id="${ac._id || ac.id}" style="color: var(--status-danger); border-color: var(--status-danger); padding: 2px 6px; font-size: 10px;">Delete</button>
+          </td>
         `;
         activeTbody.appendChild(row);
       });
@@ -509,9 +512,12 @@ async function loadAdminOverview(cachedData) {
         const div = document.createElement('div');
         div.className = 'report-item';
         div.innerHTML = `
-          <div class="report-meta" style="flex-wrap: wrap; gap: 4px;">
-            <span style="font-weight:600; color:var(--text-primary);">${r.internName} (${r.domain})</span>
-            <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">${reportDate} &nbsp;|&nbsp; In: ${checkInTime} &nbsp;|&nbsp; Out: ${checkOutTime} &nbsp;|&nbsp; ${hoursLogged}</span>
+          <div class="report-meta" style="flex-wrap: wrap; gap: 4px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-weight:600; color:var(--text-primary);">${r.internName} (${r.domain})</span>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); margin-top: 2px;">${reportDate} &nbsp;|&nbsp; In: ${checkInTime} &nbsp;|&nbsp; Out: ${checkOutTime} &nbsp;|&nbsp; ${hoursLogged}</div>
+            </div>
+            <button class="btn btn-secondary btn-sm delete-session-btn" data-id="${r._id || r.id}" style="color: var(--status-danger); border-color: var(--status-danger); padding: 2px 6px; font-size: 10px;">Delete</button>
           </div>
           <div class="report-text" style="margin-top: 6px; padding: 6px; border-radius: 4px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); font-style: italic;">
             ${escapeHtml(r.dailyReport)}
@@ -520,6 +526,31 @@ async function loadAdminOverview(cachedData) {
         reportsContainer.appendChild(div);
       });
     }
+
+    // Bind delete clicks for all delete buttons in overview
+    document.querySelectorAll('#active-checkins-body .delete-session-btn, #recent-reports-container .delete-session-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this work session record?')) {
+          try {
+            const res = await fetch(`/api/admin/attendance/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              showToast('Session record deleted successfully');
+              // Reload overview from server
+              const freshData = await (await fetch('/api/admin/dashboard')).json();
+              loadAdminOverview(freshData);
+            } else {
+              const data = await res.json();
+              showToast(data.error || 'Failed to delete record');
+            }
+          } catch (err) {
+            showToast(err.message);
+          }
+        }
+      };
+    });
 
   } catch (err) {
     console.error('Error fetching admin dashboard summary:', err);
