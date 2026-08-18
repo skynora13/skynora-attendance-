@@ -1131,14 +1131,12 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     
     const frontHeader = document.getElementById(`${prefix}-tear-header`);
     const frontDay = document.getElementById(`${prefix}-tear-day`);
-    const frontFooter = document.getElementById(`${prefix}-tear-footer`);
     const frontDetails = document.getElementById(`${prefix}-tear-front-details`);
     
     const monthName = monthsFull[month];
     
     if (frontHeader) frontHeader.textContent = monthName;
     if (frontDay) frontDay.textContent = `${day}${suffix}`;
-    if (frontFooter) frontFooter.textContent = year;
     
     // Change coloring dynamically
     const headerColor = attRecord ? '#12b07e' : (leaveRecord ? '#e74c3c' : '#6366f1');
