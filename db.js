@@ -107,10 +107,10 @@ function writeDb(data) {
 }
 
 // MongoDB Connection State
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://skynora13_db_user:BtTbTEF3x6f1roTy@cluster0.2jmgcrz.mongodb.net/?appName=Cluster0';
 let client = null;
 let mongoDb = null;
-let useMongo = false;
+let useMongo = true;
 
 if (MONGODB_URI) {
   useMongo = true;
