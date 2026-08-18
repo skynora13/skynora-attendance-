@@ -262,9 +262,9 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   const interns = users.filter(u => u.role === 'intern');
 
-  // Active check-ins today
+  // All check-ins today (including completed and active sessions)
   const today = getTodayDate();
-  const activeCheckins = attendance.filter(a => a.date === today && a.checkOut === null).map(a => {
+  const todaySessions = attendance.filter(a => a.date === today).map(a => {
     const intern = interns.find(i => i.id === a.userId);
     return {
       ...a,
@@ -273,8 +273,14 @@ app.get('/api/admin/dashboard', async (req, res) => {
     };
   });
 
+  const activeCount = attendance.filter(a => a.date === today && a.checkOut === null).length;
+
   // Recent daily reports
-  const recentReports = attendance.filter(a => a.dailyReport !== null).sort((a,b) => new Date(b.checkOut) - new Date(a.checkOut)).slice(0, 10).map(a => {
+  const recentReports = attendance.filter(a => a.dailyReport && a.dailyReport.trim() !== '').sort((a,b) => {
+    const timeA = a.checkOut ? new Date(a.checkOut) : new Date(a.checkIn);
+    const timeB = b.checkOut ? new Date(b.checkOut) : new Date(b.checkIn);
+    return timeB - timeA;
+  }).slice(0, 10).map(a => {
     const intern = interns.find(i => i.id === a.userId);
     return {
       ...a,
@@ -304,7 +310,8 @@ app.get('/api/admin/dashboard', async (req, res) => {
   }).sort((a,b) => new Date(b.assignedAt) - new Date(a.assignedAt));
 
   res.json({
-    activeCheckins,
+    activeCheckins: todaySessions, // keep property name for frontend compatibility
+    activeCount,
     recentReports,
     pendingLeaves,
     allTasks,

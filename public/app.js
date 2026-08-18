@@ -464,42 +464,58 @@ async function loadAdminOverview(cachedData) {
     const data = cachedData || await (await fetch('/api/admin/dashboard')).json();
 
     document.getElementById('stat-total-interns').textContent = data.internsCount;
-    document.getElementById('stat-active-checkins').textContent = data.activeCheckins.length;
+    document.getElementById('stat-active-checkins').textContent = data.activeCount;
     document.getElementById('stat-pending-leaves').textContent = data.pendingLeaves.length;
 
-    // Render active checkins
+    // Render active/completed checkins today
     const activeTbody = document.getElementById('active-checkins-body');
     activeTbody.innerHTML = '';
     if (data.activeCheckins.length === 0) {
-      activeTbody.innerHTML = `<tr><td colspan="3" class="empty-state" style="padding:20px 0;">No active work sessions.</td></tr>`;
+      activeTbody.innerHTML = `<tr><td colspan="5" class="empty-state" style="padding:20px 0;">No work sessions recorded today.</td></tr>`;
     } else {
       data.activeCheckins.forEach(ac => {
+        const checkInTime = new Date(ac.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const checkOutTime = ac.checkOut 
+          ? new Date(ac.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : '<span class="status-badge status-completed" style="padding:2px 6px;">Active</span>';
+        const duration = ac.totalHours ? `${ac.totalHours} hrs` : '--';
+        
         const row = document.createElement('tr');
         row.innerHTML = `
           <td><span style="font-weight:600;">${ac.internName}</span></td>
           <td><span class="badge">${ac.domain}</span></td>
-          <td style="font-family:var(--font-mono);">${new Date(ac.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+          <td style="font-family:var(--font-mono);">${checkInTime}</td>
+          <td style="font-family:var(--font-mono);">${checkOutTime}</td>
+          <td style="font-family:var(--font-mono); font-weight:600;">${duration}</td>
         `;
         activeTbody.appendChild(row);
       });
     }
 
-    // Render recent daily reports
+    // Render recent daily reports with full times and hours
     const reportsContainer = document.getElementById('recent-reports-container');
     reportsContainer.innerHTML = '';
     if (data.recentReports.length === 0) {
       reportsContainer.innerHTML = `<div class="empty-state">No work reports submitted yet.</div>`;
     } else {
       data.recentReports.forEach(r => {
-        const checkOutLocal = new Date(r.checkOut).toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const reportDate = new Date(r.checkIn).toLocaleDateString([], { month: 'short', day: 'numeric' });
+        const checkInTime = new Date(r.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const checkOutTime = r.checkOut 
+          ? new Date(r.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : 'Active';
+        const hoursLogged = r.totalHours ? `${r.totalHours} hrs` : 'Active';
+        
         const div = document.createElement('div');
         div.className = 'report-item';
         div.innerHTML = `
-          <div class="report-meta">
+          <div class="report-meta" style="flex-wrap: wrap; gap: 4px;">
             <span style="font-weight:600; color:var(--text-primary);">${r.internName} (${r.domain})</span>
-            <span style="font-family:var(--font-mono);">${checkOutLocal} | ${r.totalHours} hrs</span>
+            <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">${reportDate} &nbsp;|&nbsp; In: ${checkInTime} &nbsp;|&nbsp; Out: ${checkOutTime} &nbsp;|&nbsp; ${hoursLogged}</span>
           </div>
-          <div class="report-text">${escapeHtml(r.dailyReport)}</div>
+          <div class="report-text" style="margin-top: 6px; padding: 6px; border-radius: 4px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); font-style: italic;">
+            ${escapeHtml(r.dailyReport)}
+          </div>
         `;
         reportsContainer.appendChild(div);
       });
