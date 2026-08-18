@@ -501,7 +501,7 @@ async function loadAdminInterns() {
     tbody.innerHTML = '';
     
     if (data.interns.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No interns registered yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No interns registered yet.</td></tr>`;
       return;
     }
 
@@ -513,8 +513,37 @@ async function loadAdminInterns() {
         <td><span class="badge">${int.domain}</span></td>
         <td style="font-family:var(--font-mono); font-weight:600;">${int.totalHours} hrs</td>
         <td>${int.completedTasks} / ${int.tasksCount} completed</td>
+        <td>
+          <button class="btn btn-secondary btn-sm delete-intern-btn" data-id="${int.id}" style="color:var(--status-danger); border-color:rgba(231, 76, 60, 0.3); background-color:rgba(231, 76, 60, 0.05); font-weight: 500; font-size: 11px;">Delete</button>
+        </td>
       `;
       tbody.appendChild(row);
+    });
+
+    // Add click listeners for delete buttons
+    document.querySelectorAll('.delete-intern-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const internId = e.target.getAttribute('data-id');
+        const internName = e.target.closest('tr').querySelector('span').textContent;
+        
+        if (!confirm(`Are you sure you want to delete ${internName}? This will also erase all their check-in histories, tasks, and leave records.`)) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/admin/delete-intern/${internId}`, {
+            method: 'DELETE'
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          showToast('Intern account deleted successfully');
+          loadAdminInterns();
+          refreshAdminDashboardData(); // Refresh summary statistics card numbers
+        } catch (err) {
+          showToast(err.message);
+        }
+      });
     });
   } catch (err) {
     console.error('Error loading interns:', err);

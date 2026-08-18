@@ -421,7 +421,35 @@ app.get('/api/admin/monthly-reports', (req, res) => {
     };
   });
 
-  res.json({ reports });
+// Admin: Delete Intern
+app.delete('/api/admin/delete-intern/:id', (req, res) => {
+  const internId = req.params.id;
+  
+  // 1. Delete user
+  const users = db.getCollection('users');
+  const userExists = users.some(u => u.id === internId && u.role === 'intern');
+  if (!userExists) {
+    return res.status(404).json({ error: 'Intern not found' });
+  }
+  const updatedUsers = users.filter(u => u.id !== internId);
+  db.saveCollection('users', updatedUsers);
+
+  // 2. Delete attendance records
+  const attendance = db.getCollection('attendance');
+  const updatedAttendance = attendance.filter(a => a.userId !== internId);
+  db.saveCollection('attendance', updatedAttendance);
+
+  // 3. Delete tasks
+  const tasks = db.getCollection('tasks');
+  const updatedTasks = tasks.filter(t => t.userId !== internId);
+  db.saveCollection('tasks', updatedTasks);
+
+  // 4. Delete leaves
+  const leaves = db.getCollection('leaves');
+  const updatedLeaves = leaves.filter(l => l.userId !== internId);
+  db.saveCollection('leaves', updatedLeaves);
+
+  res.json({ success: true, message: 'Intern deleted successfully' });
 });
 
 // Fallback HTML page routing
