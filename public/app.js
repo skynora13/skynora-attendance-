@@ -137,6 +137,21 @@ async function initInternDashboard() {
   await updateAttendanceStatus();
   await loadInternTasks();
   await loadLeaveHistory();
+  await loadInternAttendanceCalendar();
+}
+
+async function loadInternAttendanceCalendar() {
+  try {
+    const attRes = await fetch(`/api/intern/attendance/${currentUser.id}`);
+    const attData = await attRes.json();
+    
+    const leavesRes = await fetch(`/api/intern/leaves/${currentUser.id}`);
+    const leavesData = await leavesRes.json();
+    
+    renderFlipCalendar('intern-flip-calendar', attData.attendance, leavesData.leaves);
+  } catch (err) {
+    console.error('Error loading intern attendance calendar:', err);
+  }
 }
 
 async function updateAttendanceStatus() {
@@ -200,6 +215,7 @@ document.getElementById('check-in-btn').addEventListener('click', async () => {
     showToast('Session Started. Have a great work day!');
     triggerNotification('Session Started', 'You checked in successfully for today!');
     updateAttendanceStatus();
+    loadInternAttendanceCalendar();
   } catch (err) {
     showToast(err.message);
   }
@@ -231,6 +247,7 @@ document.getElementById('check-out-btn').addEventListener('click', async () => {
     document.getElementById('daily-report-input').value = '';
     localStorage.removeItem('skynora_daily_report_draft');
     updateAttendanceStatus();
+    loadInternAttendanceCalendar();
   } catch (err) {
     showToast(err.message);
   }
@@ -519,6 +536,18 @@ async function loadAdminInterns() {
           <button class="btn btn-secondary btn-sm delete-intern-btn" data-id="${int.id}" style="color:var(--status-danger); border-color:rgba(231, 76, 60, 0.3); background-color:rgba(231, 76, 60, 0.05); font-weight: 500; font-size: 11px;">Delete</button>
         </td>
       `;
+      
+      // Load intern's calendar on row click
+      row.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-intern-btn')) return;
+        
+        // Highlight selected row
+        tbody.querySelectorAll('tr').forEach(r => r.style.backgroundColor = '');
+        row.style.backgroundColor = 'var(--bg-secondary)';
+        
+        loadAdminInternCalendar(int.id, int.name);
+      });
+
       tbody.appendChild(row);
     });
 
@@ -540,6 +569,15 @@ async function loadAdminInterns() {
           if (!res.ok) throw new Error(data.error);
 
           showToast('Intern account deleted successfully');
+          
+          // Reset calendar if active
+          document.getElementById('selected-intern-calendar-name').textContent = 'Select an Intern below...';
+          document.getElementById('admin-flip-calendar').innerHTML = `
+            <div style="grid-column: span 7; text-align: center; padding: 40px; color: var(--text-secondary); font-size: 13px;">
+              Please select an intern from the table above to view their monthly calendar.
+            </div>
+          `;
+
           loadAdminInterns();
           refreshAdminDashboardData(); // Refresh summary statistics card numbers
         } catch (err) {
@@ -945,3 +983,126 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// Admin Dashboard Calendar Loader
+async function loadAdminInternCalendar(internId, internName) {
+  document.getElementById('selected-intern-calendar-name').textContent = internName;
+  try {
+    const attRes = await fetch(`/api/intern/attendance/${internId}`);
+    const attData = await attRes.json();
+    
+    const leavesRes = await fetch(`/api/intern/leaves/${internId}`);
+    const leavesData = await leavesRes.json();
+    
+    renderFlipCalendar('admin-flip-calendar', attData.attendance, leavesData.leaves);
+  } catch (err) {
+    console.error('Error loading intern calendar details:', err);
+  }
+}
+
+// Flip Calendar Renderer Helper
+function renderFlipCalendar(containerId, attendanceList, leavesList) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  // Render Day Headers (Sun - Sat)
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  daysOfWeek.forEach(day => {
+    const el = document.createElement('div');
+    el.className = 'calendar-header-day';
+    el.textContent = day;
+    container.appendChild(el);
+  });
+  
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-indexed
+  
+  const firstDayIndex = new Date(year, month, 1).getDay(); // Day of week first day falls on (0-6)
+  const totalDays = new Date(year, month + 1, 0).getDate(); // Days in current month
+  
+  // Render empty placeholder cells for days of previous month
+  for (let i = 0; i < firstDayIndex; i++) {
+    const el = document.createElement('div');
+    el.className = 'calendar-cell';
+    el.innerHTML = `<div class="calendar-cell-inner"><div class="calendar-cell-front status-empty"></div></div>`;
+    container.appendChild(el);
+  }
+  
+  // Render each day of the current month
+  for (let day = 1; day <= totalDays; day++) {
+    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    // Check if weekend
+    const dateObj = new Date(year, month, day);
+    const dayOfWeek = dateObj.getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    
+    // Find attendance record for this day
+    const attRecord = attendanceList.find(a => a.date === dateString);
+    
+    // Find approved leave request for this day
+    const leaveRecord = leavesList.find(l => {
+      const start = new Date(l.startDate);
+      const end = new Date(l.endDate);
+      const current = new Date(year, month, day);
+      return l.status === 'approved' && current >= start && current <= end;
+    });
+    
+    let frontClass = '';
+    let frontContent = `<div>${day}</div>`;
+    let backContent = '';
+    
+    if (attRecord) {
+      frontClass = 'status-present';
+      frontContent = `<div>${day}</div><div style="font-size:16px; margin-top:-4px; line-height:1;">•</div>`;
+      
+      const checkInLocal = new Date(attRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const checkOutLocal = attRecord.checkOut 
+        ? new Date(attRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        : 'Active';
+      const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs` : 'Active';
+      
+      backContent = `
+        <div style="font-weight:700; font-size:10px; color:var(--status-success);">PRESENT</div>
+        <div style="margin-top:2px;">In: ${checkInLocal}</div>
+        <div>Out: ${checkOutLocal}</div>
+        <div style="font-weight:700; margin-top:2px; color:var(--status-success);">${hoursLogged}</div>
+      `;
+    } else if (leaveRecord) {
+      frontClass = 'status-leave';
+      frontContent = `<div>${day}</div><div style="font-size:16px; margin-top:-4px; line-height:1;">•</div>`;
+      backContent = `
+        <div style="font-weight:700; font-size:10px; color:var(--status-danger);">LEAVE</div>
+        <div style="margin-top:4px; font-size:8px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escapeHtml(leaveRecord.reason)}</div>
+      `;
+    } else if (isWeekend) {
+      frontClass = 'status-weekend';
+      backContent = `
+        <div style="font-weight:700; color:var(--text-secondary);">WEEKEND</div>
+        <div style="margin-top:2px;">Off Session</div>
+      `;
+    } else {
+      backContent = `
+        <div style="color:var(--text-secondary); font-size:10px;">NO RECORD</div>
+        <div style="margin-top:2px;">Unchecked</div>
+      `;
+    }
+    
+    const cell = document.createElement('div');
+    cell.className = 'calendar-cell';
+    cell.innerHTML = `
+      <div class="calendar-cell-inner">
+        <div class="calendar-cell-front ${frontClass}">
+          ${frontContent}
+        </div>
+        <div class="calendar-cell-back">
+          ${backContent}
+        </div>
+      </div>
+    `;
+    container.appendChild(cell);
+  }
+}

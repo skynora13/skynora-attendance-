@@ -859,3 +859,112 @@ body.dark-theme .badge-admin {
   color: #121212;
   border-color: #ffffff;
 }
+
+/* Flip Calendar Styling */
+.flip-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  max-width: 100%;
+  margin-top: 16px;
+}
+
+.calendar-header-day {
+  text-align: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  perspective: 1000px;
+  cursor: pointer;
+}
+
+.calendar-cell-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.calendar-cell:hover .calendar-cell-inner {
+  transform: rotateY(180deg);
+}
+
+.calendar-cell-front,
+.calendar-cell-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.calendar-cell-front {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.calendar-cell-back {
+  background-color: var(--accent-color);
+  color: var(--bg-primary);
+  transform: rotateY(180deg);
+  font-size: 9px;
+  padding: 4px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+body.dark-theme .calendar-cell-back {
+  background-color: #ffffff;
+  color: #121212;
+}
+
+/* Day statuses on front */
+.calendar-cell-front.status-present {
+  background-color: rgba(18, 176, 126, 0.1);
+  border-color: var(--status-success);
+  color: var(--status-success);
+}
+
+.calendar-cell-front.status-leave {
+  background-color: rgba(231, 76, 60, 0.1);
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+
+.calendar-cell-front.status-weekend {
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  opacity: 0.4;
+  font-weight: 400;
+}
+
+.calendar-cell-front.status-empty {
+  opacity: 0.15;
+  background-color: transparent;
+  border-style: dashed;
+}
+
+/* Admin Intern Table Row Cursor */
+#registered-interns-body tr {
+  cursor: pointer;
+}
+#registered-interns-body tr:hover {
+  background-color: var(--bg-secondary);
+}

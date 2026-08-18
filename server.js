@@ -172,6 +172,14 @@ app.get('/api/intern/leaves/:userId', async (req, res) => {
   res.json({ leaves: userLeaves });
 });
 
+// Intern: Get Attendance History
+app.get('/api/intern/attendance/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const attendance = await db.getCollection('attendance');
+  const userAttendance = attendance.filter(a => a.userId === userId);
+  res.json({ attendance: userAttendance });
+});
+
 // Intern: Get Tasks
 app.get('/api/intern/tasks/:userId', async (req, res) => {
   const { userId } = req.params;
