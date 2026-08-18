@@ -1052,12 +1052,18 @@ function renderFlipCalendar(containerId, attendanceList, leavesList) {
     });
     
     let frontClass = '';
-    let frontContent = `<div>${day}</div>`;
+    let frontContent = '';
     let backContent = '';
     
     if (attRecord) {
       frontClass = 'status-present';
-      frontContent = `<div>${day}</div><div style="font-size:16px; margin-top:-4px; line-height:1;">•</div>`;
+      frontContent = `
+        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+          <span style="font-size:18px; font-weight:700;">${day}</span>
+          <span style="width: 8px; height: 8px; background-color: var(--status-success); border-radius: 50%;"></span>
+        </div>
+        <div style="font-size: 10px; font-weight: 500; color: var(--status-success); margin-top: auto;">PRESENT</div>
+      `;
       
       const checkInLocal = new Date(attRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const checkOutLocal = attRecord.checkOut 
@@ -1073,18 +1079,36 @@ function renderFlipCalendar(containerId, attendanceList, leavesList) {
       `;
     } else if (leaveRecord) {
       frontClass = 'status-leave';
-      frontContent = `<div>${day}</div><div style="font-size:16px; margin-top:-4px; line-height:1;">•</div>`;
+      frontContent = `
+        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+          <span style="font-size:18px; font-weight:700;">${day}</span>
+          <span style="width: 8px; height: 8px; background-color: var(--status-danger); border-radius: 50%;"></span>
+        </div>
+        <div style="font-size: 10px; font-weight: 500; color: var(--status-danger); margin-top: auto;">LEAVE</div>
+      `;
       backContent = `
         <div style="font-weight:700; font-size:10px; color:var(--status-danger);">LEAVE</div>
         <div style="margin-top:4px; font-size:8px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escapeHtml(leaveRecord.reason)}</div>
       `;
     } else if (isWeekend) {
       frontClass = 'status-weekend';
+      frontContent = `
+        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+          <span style="font-size:18px; font-weight:700; opacity:0.6;">${day}</span>
+        </div>
+        <div style="font-size: 10px; font-weight: 500; color: var(--text-secondary); margin-top: auto; opacity:0.6;">WEEKEND</div>
+      `;
       backContent = `
         <div style="font-weight:700; color:var(--text-secondary);">WEEKEND</div>
         <div style="margin-top:2px;">Off Session</div>
       `;
     } else {
+      frontContent = `
+        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+          <span style="font-size:18px; font-weight:700; opacity:0.3;">${day}</span>
+        </div>
+        <div style="font-size: 10px; font-weight: 500; color: var(--text-secondary); margin-top: auto; opacity:0.3;">ABSENT</div>
+      `;
       backContent = `
         <div style="color:var(--text-secondary); font-size:10px;">NO RECORD</div>
         <div style="margin-top:2px;">Unchecked</div>
