@@ -1011,6 +1011,8 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
   let displayDate = new Date();
   let currentSelectedDay = new Date().getDate();
   
+  console.log(`[Calendar Init] prefix: ${prefix}, attendance records: ${attendanceList.length}, leaves: ${leavesList.length}`);
+  
   const prevBtn = document.getElementById(`${prefix}-prev-month-btn`);
   const nextBtn = document.getElementById(`${prefix}-next-month-btn`);
   
@@ -1019,15 +1021,21 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
     prevBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      console.log(`[Calendar Nav] Month prev clicked. Previous date: ${displayDate}`);
       displayDate.setMonth(displayDate.getMonth() - 1);
+      console.log(`[Calendar Nav] Month prev clicked. New date: ${displayDate}`);
       drawCells();
     };
     nextBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      console.log(`[Calendar Nav] Month next clicked. Previous date: ${displayDate}`);
       displayDate.setMonth(displayDate.getMonth() + 1);
+      console.log(`[Calendar Nav] Month next clicked. New date: ${displayDate}`);
       drawCells();
     };
+  } else {
+    console.warn(`[Calendar Warning] Month navigation buttons not found: ${prefix}-prev-month-btn, ${prefix}-next-month-btn`);
   }
 
   // Bind day-by-day navigation button clicks on the card itself
@@ -1037,20 +1045,23 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
       btn.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
+        console.log(`[Calendar Day Nav] Clicked: ${btnId}, step: ${step}`);
         
         const year = displayDate.getFullYear();
         const month = displayDate.getMonth();
         const totalDays = new Date(year, month + 1, 0).getDate();
         
         let targetDay = currentSelectedDay + step;
+        console.log(`[Calendar Day Nav] Current selected day: ${currentSelectedDay}, target day: ${targetDay}`);
+        
         if (targetDay < 1) {
-          // Go to last day of previous month
+          console.log(`[Calendar Day Nav] Wrapping to prev month`);
           displayDate.setMonth(displayDate.getMonth() - 1);
           const prevMonthDays = new Date(displayDate.getFullYear(), displayDate.getMonth() + 1, 0).getDate();
           currentSelectedDay = prevMonthDays;
           drawCells();
         } else if (targetDay > totalDays) {
-          // Go to first day of next month
+          console.log(`[Calendar Day Nav] Wrapping to next month`);
           displayDate.setMonth(displayDate.getMonth() + 1);
           currentSelectedDay = 1;
           drawCells();
@@ -1059,6 +1070,8 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
           selectDayCell(currentSelectedDay);
         }
       };
+    } else {
+      console.log(`[Calendar Info] Day button not found: ${btnId}`);
     }
   };
 
@@ -1068,6 +1081,7 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
   bindDayNavigation(`${prefix}-next-day-btn-back`, 1);
 
   function selectDayCell(day) {
+    console.log(`[Calendar selectDayCell] Selecting day: ${day}`);
     const cellsContainer = document.getElementById(`${prefix}-grid-cells`);
     if (!cellsContainer) return;
     
