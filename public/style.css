@@ -141,7 +141,41 @@ p {
   font-size: 20px;
   letter-spacing: -0.04em;
   color: var(--accent-color);
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  --shadow-color: rgba(99, 102, 241, 0.45); /* Soft purple shadow */
 }
+
+body.dark-theme .logo {
+  --shadow-color: rgba(255, 255, 255, 0.45); /* Soft white shadow in dark theme */
+}
+
+.logo::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0.04em;
+  left: 0.04em;
+  background: linear-gradient(45deg, transparent 45%, var(--shadow-color) 45%, var(--shadow-color) 55%, transparent 0);
+  z-index: -1;
+  background-size: 0.06em 0.06em;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: line-shadow-anim 15s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes line-shadow-anim {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 100% -100%;
+  }
+}
+
 
 /* Badges */
 .badge {
