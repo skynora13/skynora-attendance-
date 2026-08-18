@@ -21,16 +21,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDashboard();
   }
 
-  // Handle Domain selector display on login role selection
+  // Handle Domain selector display and validation on login role selection
   const roleSelect = document.getElementById('login-role');
   const domainGroup = document.getElementById('domain-group');
-  roleSelect.addEventListener('change', () => {
+  const domainInput = document.getElementById('login-domain');
+  
+  function updateDomainRequired() {
     if (roleSelect.value === 'admin') {
       domainGroup.style.display = 'none';
+      if (domainInput) domainInput.required = false;
     } else {
       domainGroup.style.display = 'block';
+      if (domainInput) domainInput.required = true;
     }
-  });
+  }
+
+  if (roleSelect) {
+    updateDomainRequired();
+    roleSelect.addEventListener('change', updateDomainRequired);
+  }
 });
 
 // Toast Utility
