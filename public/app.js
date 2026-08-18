@@ -388,8 +388,9 @@ function setupAdminTabs() {
       document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.add('hidden'));
 
       // Add active to clicked tab
-      e.target.classList.add('active');
-      const targetId = e.target.getAttribute('data-target');
+      const currentTab = e.currentTarget;
+      currentTab.classList.add('active');
+      const targetId = currentTab.getAttribute('data-target');
       document.getElementById(targetId).classList.remove('hidden');
 
       // Refresh specific tab data if needed
@@ -411,8 +412,9 @@ function setupInternTabs() {
       document.querySelectorAll('.intern-tab-content').forEach(c => c.classList.add('hidden'));
 
       // Add active to clicked tab
-      e.target.classList.add('active');
-      const targetId = e.target.getAttribute('data-target');
+      const currentTab = e.currentTarget;
+      currentTab.classList.add('active');
+      const targetId = currentTab.getAttribute('data-target');
       document.getElementById(targetId).classList.remove('hidden');
     });
   });
