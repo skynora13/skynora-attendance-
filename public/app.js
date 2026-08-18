@@ -148,7 +148,7 @@ async function loadInternAttendanceCalendar() {
     const leavesRes = await fetch(`/api/intern/leaves/${currentUser.id}`);
     const leavesData = await leavesRes.json();
     
-    renderFlipCalendar('intern-flip-calendar', attData.attendance, leavesData.leaves);
+    initDoubleCalendar('intern', attData.attendance, leavesData.leaves);
   } catch (err) {
     console.error('Error loading intern attendance calendar:', err);
   }
