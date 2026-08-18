@@ -987,6 +987,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // Admin Dashboard Calendar Loader
 async function loadAdminInternCalendar(internId, internName) {
   document.getElementById('selected-intern-calendar-name').textContent = internName;
+  
+  const placeholder = document.getElementById('admin-calendar-placeholder');
+  const container = document.getElementById('admin-calendar-layout-container');
+  if (placeholder) placeholder.style.display = 'none';
+  if (container) container.style.display = 'flex';
+  
   try {
     const attRes = await fetch(`/api/intern/attendance/${internId}`);
     const attData = await attRes.json();
@@ -994,139 +1000,202 @@ async function loadAdminInternCalendar(internId, internName) {
     const leavesRes = await fetch(`/api/intern/leaves/${internId}`);
     const leavesData = await leavesRes.json();
     
-    renderFlipCalendar('admin-flip-calendar', attData.attendance, leavesData.leaves);
+    initDoubleCalendar('admin', attData.attendance, leavesData.leaves);
   } catch (err) {
     console.error('Error loading intern calendar details:', err);
   }
 }
 
-// Flip Calendar Renderer Helper
-function renderFlipCalendar(containerId, attendanceList, leavesList) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
+// Double Card Calendar Controller (Matches the hover.dev look & feel)
+function initDoubleCalendar(prefix, attendanceList, leavesList) {
+  let displayDate = new Date();
   
-  container.innerHTML = '';
+  const prevBtn = document.getElementById(`${prefix}-prev-month-btn`);
+  const nextBtn = document.getElementById(`${prefix}-next-month-btn`);
   
-  // Render Day Headers (Sun - Sat)
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  daysOfWeek.forEach(day => {
-    const el = document.createElement('div');
-    el.className = 'calendar-header-day';
-    el.textContent = day;
-    container.appendChild(el);
-  });
-  
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth(); // 0-indexed
-  
-  const firstDayIndex = new Date(year, month, 1).getDay(); // Day of week first day falls on (0-6)
-  const totalDays = new Date(year, month + 1, 0).getDate(); // Days in current month
-  
-  // Render empty placeholder cells for days of previous month
-  for (let i = 0; i < firstDayIndex; i++) {
-    const el = document.createElement('div');
-    el.className = 'calendar-cell';
-    el.innerHTML = `<div class="calendar-cell-inner"><div class="calendar-cell-front status-empty"></div></div>`;
-    container.appendChild(el);
-  }
-  
-  // Render each day of the current month
-  for (let day = 1; day <= totalDays; day++) {
-    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  // Re-attach listeners using clones to clear old event attachments
+  if (prevBtn && nextBtn) {
+    const newPrevBtn = prevBtn.cloneNode(true);
+    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+    const newNextBtn = nextBtn.cloneNode(true);
+    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
     
-    // Check if weekend
-    const dateObj = new Date(year, month, day);
-    const dayOfWeek = dateObj.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    
-    // Find attendance record for this day
-    const attRecord = attendanceList.find(a => a.date === dateString);
-    
-    // Find approved leave request for this day
-    const leaveRecord = leavesList.find(l => {
-      const start = new Date(l.startDate);
-      const end = new Date(l.endDate);
-      const current = new Date(year, month, day);
-      return l.status === 'approved' && current >= start && current <= end;
+    newPrevBtn.addEventListener('click', () => {
+      displayDate.setMonth(displayDate.getMonth() - 1);
+      drawCells();
     });
     
-    let frontClass = '';
-    let frontContent = '';
-    let backContent = '';
+    newNextBtn.addEventListener('click', () => {
+      displayDate.setMonth(displayDate.getMonth() + 1);
+      drawCells();
+    });
+  }
+
+  // Setup hover flip on the tear off card
+  const cardElement = document.getElementById(`${prefix}-tear-off-card`);
+  if (cardElement) {
+    // Remove existing event classes to avoid conflicts
+    cardElement.classList.remove('flipped');
     
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.classList.add('flipped');
+    });
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.classList.remove('flipped');
+    });
+    // Support mobile tapping
+    cardElement.addEventListener('click', () => {
+      cardElement.classList.toggle('flipped');
+    });
+  }
+  
+  function getDaySuffix(day) {
+    if (day > 3 && day < 21) return 'th';
+    switch (day % 10) {
+      case 1:  return "st";
+      case 2:  return "nd";
+      case 3:  return "rd";
+      default: return "th";
+    }
+  }
+
+  function updateTearOffCard(day, month, year, attRecord, leaveRecord) {
+    const monthsFull = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    const suffix = getDaySuffix(day);
+    
+    const frontHeader = document.getElementById(`${prefix}-tear-header`);
+    const frontDay = document.getElementById(`${prefix}-tear-day`);
+    const frontFooter = document.getElementById(`${prefix}-tear-footer`);
+    
+    const backHeader = document.getElementById(`${prefix}-tear-header-back`);
+    const backDay = document.getElementById(`${prefix}-tear-back-day`);
+    const backStats = document.getElementById(`${prefix}-tear-stats`);
+    const backFooter = document.getElementById(`${prefix}-tear-footer-back`);
+    
+    const monthName = monthsFull[month];
+    
+    if (frontHeader) frontHeader.textContent = monthName;
+    if (frontDay) frontDay.textContent = `${day}${suffix}`;
+    if (frontFooter) frontFooter.textContent = year;
+    
+    if (backHeader) backHeader.textContent = attRecord ? 'PRESENT' : (leaveRecord ? 'LEAVE' : 'NO RECORD');
+    if (backDay) backDay.textContent = `${day}${suffix}`;
+    if (backFooter) backFooter.textContent = year;
+    
+    // Change coloring dynamically
+    const headerColor = attRecord ? '#12b07e' : (leaveRecord ? '#e74c3c' : '#6366f1');
+    if (frontHeader) frontHeader.style.backgroundColor = headerColor;
+    if (backHeader) backHeader.style.backgroundColor = headerColor;
+    
+    let statsHtml = '';
     if (attRecord) {
-      frontClass = 'status-present';
-      frontContent = `
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-          <span style="font-size:18px; font-weight:700;">${day}</span>
-          <span style="width: 8px; height: 8px; background-color: var(--status-success); border-radius: 50%;"></span>
-        </div>
-        <div style="font-size: 10px; font-weight: 500; color: var(--status-success); margin-top: auto;">PRESENT</div>
-      `;
-      
       const checkInLocal = new Date(attRecord.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const checkOutLocal = attRecord.checkOut 
         ? new Date(attRecord.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
         : 'Active';
-      const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs` : 'Active';
+      const hoursLogged = attRecord.totalHours ? `${attRecord.totalHours} hrs logged` : 'Session Active';
       
-      backContent = `
-        <div style="font-weight:700; font-size:10px; color:var(--status-success);">PRESENT</div>
-        <div style="margin-top:2px;">In: ${checkInLocal}</div>
-        <div>Out: ${checkOutLocal}</div>
-        <div style="font-weight:700; margin-top:2px; color:var(--status-success);">${hoursLogged}</div>
+      statsHtml = `
+        <div style="font-weight:700; margin-bottom:8px; color:var(--status-success);">SESSION DETAILS</div>
+        <div style="margin: 4px 0; font-size:11px;">Check-In: <b>${checkInLocal}</b></div>
+        <div style="margin: 4px 0; font-size:11px;">Check-Out: <b>${checkOutLocal}</b></div>
+        <div style="font-weight:700; margin-top:8px; color:var(--status-success);">${hoursLogged}</div>
       `;
     } else if (leaveRecord) {
-      frontClass = 'status-leave';
-      frontContent = `
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-          <span style="font-size:18px; font-weight:700;">${day}</span>
-          <span style="width: 8px; height: 8px; background-color: var(--status-danger); border-radius: 50%;"></span>
-        </div>
-        <div style="font-size: 10px; font-weight: 500; color: var(--status-danger); margin-top: auto;">LEAVE</div>
-      `;
-      backContent = `
-        <div style="font-weight:700; font-size:10px; color:var(--status-danger);">LEAVE</div>
-        <div style="margin-top:4px; font-size:8px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${escapeHtml(leaveRecord.reason)}</div>
-      `;
-    } else if (isWeekend) {
-      frontClass = 'status-weekend';
-      frontContent = `
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-          <span style="font-size:18px; font-weight:700; opacity:0.6;">${day}</span>
-        </div>
-        <div style="font-size: 10px; font-weight: 500; color: var(--text-secondary); margin-top: auto; opacity:0.6;">WEEKEND</div>
-      `;
-      backContent = `
-        <div style="font-weight:700; color:var(--text-secondary);">WEEKEND</div>
-        <div style="margin-top:2px;">Off Session</div>
+      statsHtml = `
+        <div style="font-weight:700; margin-bottom:8px; color:var(--status-danger);">APPROVED LEAVE</div>
+        <div style="font-style:italic; max-width:180px; word-break:break-word; font-size:11px;">"${escapeHtml(leaveRecord.reason)}"</div>
       `;
     } else {
-      frontContent = `
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
-          <span style="font-size:18px; font-weight:700; opacity:0.3;">${day}</span>
-        </div>
-        <div style="font-size: 10px; font-weight: 500; color: var(--text-secondary); margin-top: auto; opacity:0.3;">ABSENT</div>
-      `;
-      backContent = `
-        <div style="color:var(--text-secondary); font-size:10px;">NO RECORD</div>
-        <div style="margin-top:2px;">Unchecked</div>
+      statsHtml = `
+        <div style="font-weight:600; color:var(--text-secondary); margin-bottom:4px;">No Logs Recorded</div>
+        <div style="font-size:11px;">No check-in or leave logs found for this date.</div>
       `;
     }
     
-    const cell = document.createElement('div');
-    cell.className = 'calendar-cell';
-    cell.innerHTML = `
-      <div class="calendar-cell-inner">
-        <div class="calendar-cell-front ${frontClass}">
-          ${frontContent}
-        </div>
-        <div class="calendar-cell-back">
-          ${backContent}
-        </div>
-      </div>
-    `;
-    container.appendChild(cell);
+    if (backStats) backStats.innerHTML = statsHtml;
   }
+  
+  function drawCells() {
+    const cellsContainer = document.getElementById(`${prefix}-grid-cells`);
+    const titleEl = document.getElementById(`${prefix}-grid-month-title`);
+    if (!cellsContainer || !titleEl) return;
+    
+    cellsContainer.innerHTML = '';
+    
+    const year = displayDate.getFullYear();
+    const month = displayDate.getMonth();
+    
+    const monthsNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    titleEl.textContent = `${monthsNames[month]} ${year}`;
+    
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    // Draw padding cells for previous month
+    for (let i = 0; i < firstDayIndex; i++) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'grid-cell empty';
+      cellsContainer.appendChild(emptyDiv);
+    }
+    
+    let selectedDayCell = null;
+    
+    for (let day = 1; day <= totalDays; day++) {
+      const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const cellDateObj = new Date(year, month, day);
+      
+      const attRecord = attendanceList.find(a => a.date === dateString);
+      const leaveRecord = leavesList.find(l => {
+        const start = new Date(l.startDate);
+        const end = new Date(l.endDate);
+        return l.status === 'approved' && cellDateObj >= start && cellDateObj <= end;
+      });
+      
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell';
+      cell.textContent = day;
+      
+      if (attRecord) {
+        cell.classList.add('status-present');
+      } else if (leaveRecord) {
+        cell.classList.add('status-leave');
+      }
+      
+      cell.addEventListener('click', () => {
+        if (selectedDayCell) {
+          selectedDayCell.classList.remove('selected');
+        }
+        cell.classList.add('selected');
+        selectedDayCell = cell;
+        
+        // Flip card effect trigger
+        cardElement.classList.add('flipped');
+        setTimeout(() => {
+          updateTearOffCard(day, month, year, attRecord, leaveRecord);
+          setTimeout(() => {
+            cardElement.classList.remove('flipped');
+          }, 300);
+        }, 150);
+      });
+      
+      // Auto-select today
+      const todayDate = new Date();
+      if (day === todayDate.getDate() && month === todayDate.getMonth() && year === todayDate.getFullYear()) {
+        cell.classList.add('selected');
+        selectedDayCell = cell;
+        updateTearOffCard(day, month, year, attRecord, leaveRecord);
+      }
+      
+      cellsContainer.appendChild(cell);
+    }
+    
+    // Select first cell if today is not in selected month view
+    if (!selectedDayCell && cellsContainer.children.length > firstDayIndex) {
+      const firstCell = cellsContainer.children[firstDayIndex];
+      firstCell.click();
+    }
+  }
+  
+  drawCells();
 }
