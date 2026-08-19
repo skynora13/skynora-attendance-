@@ -267,8 +267,9 @@ app.get('/api/admin/dashboard', async (req, res) => {
   const today = getTodayDate();
   const todaySessions = attendance.filter(a => a.date === today).map(a => {
     const intern = users.find(i => {
-      const uId = i._id ? i._id.toString() : i.id;
-      return uId === a.userId;
+      const uId1 = i.id;
+      const uId2 = i._id ? i._id.toString() : null;
+      return uId1 === a.userId || uId2 === a.userId;
     });
     return {
       ...a,
@@ -286,8 +287,9 @@ app.get('/api/admin/dashboard', async (req, res) => {
     return timeB - timeA;
   }).slice(0, 10).map(a => {
     const intern = users.find(i => {
-      const uId = i._id ? i._id.toString() : i.id;
-      return uId === a.userId;
+      const uId1 = i.id;
+      const uId2 = i._id ? i._id.toString() : null;
+      return uId1 === a.userId || uId2 === a.userId;
     });
     return {
       ...a,
@@ -299,8 +301,9 @@ app.get('/api/admin/dashboard', async (req, res) => {
   // All pending leaves
   const pendingLeaves = leaves.filter(l => l.status === 'pending').map(l => {
     const intern = users.find(i => {
-      const uId = i._id ? i._id.toString() : i.id;
-      return uId === l.userId;
+      const uId1 = i.id;
+      const uId2 = i._id ? i._id.toString() : null;
+      return uId1 === l.userId || uId2 === l.userId;
     });
     return {
       ...l,
@@ -311,9 +314,10 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   // All tasks list
   const allTasks = tasks.map(t => {
-    const intern = interns.find(i => {
-      const uId = i._id ? i._id.toString() : i.id;
-      return uId === t.userId;
+    const intern = users.find(i => {
+      const uId1 = i.id;
+      const uId2 = i._id ? i._id.toString() : null;
+      return uId1 === t.userId || uId2 === t.userId;
     });
     return {
       ...t,
