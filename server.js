@@ -541,8 +541,11 @@ app.get('/api/admin/timesheet/:userId', async (req, res) => {
     const targetMonthStr = String(Number(month) + 1).padStart(2, '0');
     const prefix = `${year}-${targetMonthStr}`;
     
+    const uId1 = user.id;
+    const uId2 = user._id ? user._id.toString() : null;
+    
     const logs = attendance
-      .filter(a => a.userId === userId && a.date.startsWith(prefix))
+      .filter(a => (a.userId === uId1 || a.userId === uId2) && a.date.startsWith(prefix))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
       
     res.json({
@@ -578,8 +581,11 @@ app.get('/api/admin/history/:userId', async (req, res) => {
     }
     
     const attendance = await db.getCollection('attendance');
+    const uId1 = user.id;
+    const uId2 = user._id ? user._id.toString() : null;
+    
     const logs = attendance
-      .filter(a => a.userId === userId)
+      .filter(a => a.userId === uId1 || a.userId === uId2)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
       
     res.json({
