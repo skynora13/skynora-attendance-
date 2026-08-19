@@ -364,6 +364,12 @@
               </button>
             </li>
             <li>
+              <button class="sidebar-tab" data-target="admin-history">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="sidebar-tab-label">History</span>
+              </button>
+            </li>
+            <li>
               <button class="sidebar-tab" data-target="admin-settings">
                 <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 <span class="sidebar-tab-label">Settings</span>
@@ -754,6 +760,55 @@
                     <!-- Performance report items -->
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- INTERN HISTORY TAB -->
+          <div id="admin-history" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Intern Work & Attendance History</h1>
+              <p>View the complete historical check-in, check-out, and daily report history for any intern.</p>
+            </div>
+
+            <div class="grid-card">
+              <div class="card-body">
+                <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; align-items: flex-end; margin-bottom: 24px;">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="history-intern-select">Choose Intern to View History</label>
+                    <select id="history-intern-select">
+                      <option value="">-- Choose an Intern --</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <button class="btn btn-primary" id="load-history-btn" style="width: 100%;">Load Complete History</button>
+                  </div>
+                </div>
+
+                <div id="history-results-area" style="display: none;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                    <h3 style="margin: 0; font-weight: 700;" id="history-intern-title">Work History Logs</h3>
+                    <span id="history-total-days-badge" class="badge" style="background-color: var(--accent-color); color: white; border-color: var(--accent-color);">0 Days Logged</span>
+                  </div>
+
+                  <div class="overflow-x">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Date / Day</th>
+                          <th>Check In</th>
+                          <th>Check Out</th>
+                          <th>Total Hours</th>
+                          <th>Daily Work Done (Daily Report)</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="history-table-body">
+                        <!-- History logs rows -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

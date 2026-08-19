@@ -97,6 +97,28 @@ document.addEventListener('DOMContentLoaded', () => {
       win.document.close();
     });
   }
+
+  // Setup History tab event
+  const loadHistoryBtn = document.getElementById('load-history-btn');
+  if (loadHistoryBtn) {
+    loadHistoryBtn.addEventListener('click', async () => {
+      const userId = document.getElementById('history-intern-select').value;
+      if (!userId) {
+        showToast('Please select an Intern first.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`/api/admin/history/${userId}`);
+        if (!res.ok) throw new Error('Failed to load history data');
+        
+        const data = await res.json();
+        renderInternHistory(data);
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  }
 });
 
 // Toast Utility
@@ -950,6 +972,99 @@ function populateTimesheetDropdowns(reports) {
   }
 }
 
+function populateHistoryDropdown(reports) {
+  const selectEl = document.getElementById('history-intern-select');
+  if (!selectEl) return;
+  
+  const prevVal = selectEl.value;
+  selectEl.innerHTML = '<option value="">-- Choose an Intern --</option>';
+  
+  reports.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.userId;
+    opt.textContent = `${r.name} (${r.domain})`;
+    selectEl.appendChild(opt);
+  });
+  
+  selectEl.value = prevVal;
+}
+
+function renderInternHistory(data) {
+  const resultsArea = document.getElementById('history-results-area');
+  if (!resultsArea) return;
+  
+  document.getElementById('history-intern-title').textContent = `${data.intern.name}'s Complete Work History`;
+  document.getElementById('history-total-days-badge').textContent = `${data.logs.length} Days Logged`;
+  
+  const tbody = document.getElementById('history-table-body');
+  tbody.innerHTML = '';
+  
+  const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  if (data.logs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--text-secondary);">No attendance history found for this intern.</td></tr>`;
+  } else {
+    data.logs.forEach(log => {
+      const dateObj = new Date(log.date);
+      const dayName = daysShort[dateObj.getDay()];
+      const formattedDate = `${log.date} (${dayName})`;
+      
+      const checkInTime = new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const checkOutTime = log.checkOut 
+        ? new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        : '<span class="status-badge status-completed" style="padding:2px 6px;">Active</span>';
+      const duration = log.totalHours ? `${log.totalHours} hrs` : '--';
+      const report = log.dailyReport ? escapeHtml(log.dailyReport) : 'No work report submitted';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-family: var(--font-mono); font-weight: 600;">${formattedDate}</td>
+        <td style="font-family: var(--font-mono);">${checkInTime}</td>
+        <td style="font-family: var(--font-mono);">${checkOutTime}</td>
+        <td style="font-family: var(--font-mono); font-weight: 600;">${duration}</td>
+        <td style="font-style: italic; line-height: 1.4; max-width: 400px; word-break: break-word;">${report}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm delete-session-btn" data-id="${log._id || log.id}" style="color: var(--status-danger); border-color: var(--status-danger); padding: 2px 6px; font-size: 10px;">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    // Bind delete clicks inside history table
+    tbody.querySelectorAll('.delete-session-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        if (confirm('Are you sure you want to delete this work session record?')) {
+          try {
+            const res = await fetch(`/api/admin/attendance/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+              showToast('Session record deleted successfully');
+              // Reload history
+              const userId = document.getElementById('history-intern-select').value;
+              const freshRes = await fetch(`/api/admin/history/${userId}`);
+              const freshData = await freshRes.json();
+              renderInternHistory(freshData);
+              
+              // Also reload performance overview to keep metrics synced
+              loadPerformanceReports();
+            } else {
+              const data = await res.json();
+              showToast(data.error || 'Failed to delete record');
+            }
+          } catch (err) {
+            showToast(err.message);
+          }
+        }
+      };
+    });
+  }
+  
+  resultsArea.style.display = 'block';
+  resultsArea.scrollIntoView({ behavior: 'smooth' });
+}
+
 function renderGeneratedTimesheet(data, monthIndex, year) {
   const wrapper = document.getElementById('timesheet-report-wrapper');
   if (!wrapper) return;
@@ -1032,6 +1147,7 @@ async function loadPerformanceReports() {
     // Populate helper graphs and dropdown structures
     renderInternsComparisonChart(data.reports);
     populateTimesheetDropdowns(data.reports);
+    populateHistoryDropdown(data.reports);
 
   } catch (err) {
     console.error('Error loading performance evaluations:', err);

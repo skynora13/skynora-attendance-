@@ -266,7 +266,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
   // All check-ins today (including completed and active sessions)
   const today = getTodayDate();
   const todaySessions = attendance.filter(a => a.date === today).map(a => {
-    const intern = interns.find(i => {
+    const intern = users.find(i => {
       const uId = i._id ? i._id.toString() : i.id;
       return uId === a.userId;
     });
@@ -285,7 +285,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
     const timeB = b.checkOut ? new Date(b.checkOut) : new Date(b.checkIn);
     return timeB - timeA;
   }).slice(0, 10).map(a => {
-    const intern = interns.find(i => {
+    const intern = users.find(i => {
       const uId = i._id ? i._id.toString() : i.id;
       return uId === a.userId;
     });
@@ -298,7 +298,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   // All pending leaves
   const pendingLeaves = leaves.filter(l => l.status === 'pending').map(l => {
-    const intern = interns.find(i => {
+    const intern = users.find(i => {
       const uId = i._id ? i._id.toString() : i.id;
       return uId === l.userId;
     });
@@ -540,6 +540,43 @@ app.get('/api/admin/timesheet/:userId', async (req, res) => {
     const logs = attendance
       .filter(a => a.userId === userId && a.date.startsWith(prefix))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+    res.json({
+      intern: {
+        name: user.name,
+        email: user.email,
+        domain: user.domain
+      },
+      logs
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Get Complete Work History for an Intern (Across all months)
+app.get('/api/admin/history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const users = await db.getCollection('users');
+    const user = users.find(u => {
+      const uId = u._id ? u._id.toString() : u.id;
+      return uId === userId;
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const attendance = await db.getCollection('attendance');
+    const logs = attendance
+      .filter(a => a.userId === userId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
       
     res.json({
       intern: {
