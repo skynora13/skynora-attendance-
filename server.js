@@ -650,6 +650,28 @@ app.get('/api/admin/history/:userId', async (req, res) => {
   }
 });
 
+// Admin: Delete Assigned Task
+app.delete('/api/admin/tasks/delete/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tasks = await db.getCollection('tasks');
+    const index = tasks.findIndex(t => {
+      const tId = t._id ? t._id.toString() : t.id;
+      return tId === id;
+    });
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Task not found' });
+    }
+    
+    tasks.splice(index, 1);
+    await db.saveCollection('tasks', tasks);
+    res.json({ success: true, message: 'Task deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Fallback HTML page routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

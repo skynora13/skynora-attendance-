@@ -765,7 +765,7 @@ async function loadAdminTasks(cachedData) {
     tbody.innerHTML = '';
 
     if (summaryData.allTasks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="empty-state">No tasks assigned yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No tasks assigned yet.</td></tr>`;
       return;
     }
 
@@ -783,8 +783,32 @@ async function loadAdminTasks(cachedData) {
         </td>
         <td><span class="status-badge ${statusClass}">${t.status}</span></td>
         <td style="font-family:var(--font-mono); font-size:11px;">${new Date(t.statusUpdatedAt).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm delete-task-btn" data-id="${t._id || t.id}" style="color: var(--status-danger); border-color: var(--status-danger); padding: 2px 6px; font-size: 11px;">Delete</button>
+        </td>
       `;
       tbody.appendChild(row);
+    });
+
+    // Add click listeners for delete buttons
+    document.querySelectorAll('.delete-task-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const taskId = e.target.getAttribute('data-id');
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        
+        try {
+          const res = await fetch(`/api/admin/tasks/delete/${taskId}`, {
+            method: 'DELETE'
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          showToast('Task deleted successfully');
+          loadAdminTasks();
+        } catch (err) {
+          showToast(err.message);
+        }
+      });
     });
   } catch (err) {
     console.error('Error loading task tools:', err);
