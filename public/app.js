@@ -213,10 +213,29 @@ async function initInternDashboard() {
   document.getElementById('intern-domain-badge').textContent = currentUser.domain;
 
   setupInternTabs();
+  
+  // Set initial tasks count cache so notifications only fire for newer ones
+  try {
+    const tasksRes = await fetch(`/api/intern/tasks/${currentUser.id}`);
+    const tasksData = await tasksRes.json();
+    localStorage.setItem('skynora_task_count', tasksData.tasks.length);
+  } catch (e) {
+    console.error("Failed to seed initial task count:", e);
+  }
+
   await updateAttendanceStatus();
   await loadInternTasks();
   await loadLeaveHistory();
   await loadInternAttendanceCalendar();
+
+  // Poll for new tasks every 12 seconds in the background
+  if (!window.tasksPollInterval) {
+    window.tasksPollInterval = setInterval(() => {
+      if (currentUser && currentUser.role === 'intern') {
+        loadInternTasks();
+      }
+    }, 12000);
+  }
 }
 
 async function loadInternAttendanceCalendar() {
@@ -401,6 +420,21 @@ async function loadInternTasks() {
     const emptyState = document.getElementById('tasks-empty-state');
     const listEl = document.getElementById('tasks-list');
 
+    // Notify if new tasks are detected
+    const prevTaskCount = localStorage.getItem('skynora_task_count');
+    if (prevTaskCount !== null && data.tasks.length > Number(prevTaskCount)) {
+      const newTasksCount = data.tasks.length - Number(prevTaskCount);
+      showToast(`You have ${newTasksCount} new task${newTasksCount > 1 ? 's' : ''} assigned!`);
+      triggerNotification('New Task Assigned', `You have been assigned ${newTasksCount} new task${newTasksCount > 1 ? 's' : ''}.`);
+      
+      const badge = document.getElementById('tasks-notif-badge');
+      if (badge) {
+        badge.classList.remove('hidden');
+        badge.textContent = `${newTasksCount} NEW`;
+      }
+    }
+    localStorage.setItem('skynora_task_count', data.tasks.length);
+
     listEl.innerHTML = '';
     countEl.textContent = `${data.tasks.length} Task${data.tasks.length === 1 ? '' : 's'}`;
 
@@ -512,6 +546,11 @@ function setupInternTabs() {
       currentTab.classList.add('active');
       const targetId = currentTab.getAttribute('data-target');
       document.getElementById(targetId).classList.remove('hidden');
+
+      if (targetId === 'intern-tasks') {
+        const badge = document.getElementById('tasks-notif-badge');
+        if (badge) badge.classList.add('hidden');
+      }
     });
   });
 }
