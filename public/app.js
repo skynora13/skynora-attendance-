@@ -142,6 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pwaInstallBtn) {
       pwaInstallBtn.classList.remove('hidden');
     }
+
+    // Auto-trigger installation prompt if visited from direct shared install link
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('install') === 'true') {
+      setTimeout(() => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+        }
+      }, 800);
+    }
   });
 
   if (pwaInstallBtn) {
@@ -157,6 +167,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // Hide the install button
       pwaInstallBtn.classList.add('hidden');
     });
+  }
+
+  // iOS Safari Install helper instruction popup
+  const iosParams = new URLSearchParams(window.location.search);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  if (iosParams.get('install') === 'true' && isIOS && !isStandalone) {
+    setTimeout(() => {
+      showToast("To install: Tap Safari's Share button (box with up arrow) and select 'Add to Home Screen'!", 8000);
+    }, 1500);
   }
 });
 
