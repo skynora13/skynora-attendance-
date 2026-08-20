@@ -128,6 +128,36 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => console.log('Service Worker registration failed:', err));
     });
   }
+
+  // PWA One-Click Installation Handler
+  let deferredPrompt;
+  const pwaInstallBtn = document.getElementById('pwa-install-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // Show the custom install button
+    if (pwaInstallBtn) {
+      pwaInstallBtn.classList.remove('hidden');
+    }
+  });
+
+  if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      // Show the native browser install dialog
+      deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to install prompt: ${outcome}`);
+      // We can only use the prompt once, clear it
+      deferredPrompt = null;
+      // Hide the install button
+      pwaInstallBtn.classList.add('hidden');
+    });
+  }
 });
 
 // Toast Utility
