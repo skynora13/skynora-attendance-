@@ -66,10 +66,23 @@ app.post('/api/admin/create-intern', async (req, res) => {
 // Intern: Status
 app.get('/api/intern/status/:userId', async (req, res) => {
   const { userId } = req.params;
+  const users = await db.getCollection('users');
+  const user = users.find(u => {
+    const uId1 = u.id;
+    const uId2 = u._id ? u._id.toString() : null;
+    return uId1 === userId || uId2 === userId;
+  });
+  
+  if (!user) {
+    return res.json({ todayRecord: null });
+  }
+  
+  const uId1 = user.id;
+  const uId2 = user._id ? user._id.toString() : null;
   const today = getTodayDate();
   const attendanceList = await db.getCollection('attendance');
   
-  const todayRecord = attendanceList.find(a => a.userId === userId && a.date === today);
+  const todayRecord = attendanceList.find(a => (a.userId === uId1 || a.userId === uId2) && a.date === today);
   res.json({ todayRecord: todayRecord || null });
 });
 
@@ -167,24 +180,54 @@ app.post('/api/intern/leave', async (req, res) => {
 // Intern: Get Leaves
 app.get('/api/intern/leaves/:userId', async (req, res) => {
   const { userId } = req.params;
+  const users = await db.getCollection('users');
+  const user = users.find(u => {
+    const uId1 = u.id;
+    const uId2 = u._id ? u._id.toString() : null;
+    return uId1 === userId || uId2 === userId;
+  });
+  if (!user) return res.json({ leaves: [] });
+
+  const uId1 = user.id;
+  const uId2 = user._id ? user._id.toString() : null;
   const leaves = await db.getCollection('leaves');
-  const userLeaves = leaves.filter(l => l.userId === userId).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const userLeaves = leaves.filter(l => l.userId === uId1 || l.userId === uId2).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ leaves: userLeaves });
 });
 
 // Intern: Get Attendance History
 app.get('/api/intern/attendance/:userId', async (req, res) => {
   const { userId } = req.params;
+  const users = await db.getCollection('users');
+  const user = users.find(u => {
+    const uId1 = u.id;
+    const uId2 = u._id ? u._id.toString() : null;
+    return uId1 === userId || uId2 === userId;
+  });
+  if (!user) return res.json({ attendance: [] });
+
+  const uId1 = user.id;
+  const uId2 = user._id ? user._id.toString() : null;
   const attendance = await db.getCollection('attendance');
-  const userAttendance = attendance.filter(a => a.userId === userId);
+  const userAttendance = attendance.filter(a => a.userId === uId1 || a.userId === uId2);
   res.json({ attendance: userAttendance });
 });
 
 // Intern: Get Tasks
 app.get('/api/intern/tasks/:userId', async (req, res) => {
   const { userId } = req.params;
+  const users = await db.getCollection('users');
+  const user = users.find(u => {
+    const uId1 = u.id;
+    const uId2 = u._id ? u._id.toString() : null;
+    return uId1 === userId || uId2 === userId;
+  });
+  if (!user) return res.json({ tasks: [] });
+
+  const uId1 = user.id;
+  const uId2 = user._id ? user._id.toString() : null;
   const tasks = await db.getCollection('tasks');
-  const userTasks = tasks.filter(t => t.userId === userId).sort((a,b) => new Date(b.assignedAt) - new Date(a.assignedAt));
+  const userTasks = tasks.filter(t => t.userId === uId1 || t.userId === uId2).sort((a,b) => new Date(b.assignedAt) - new Date(a.assignedAt));
   res.json({ tasks: userTasks });
 });
 
@@ -344,14 +387,20 @@ app.post('/api/admin/tasks/assign', async (req, res) => {
   }
 
   const users = await db.getCollection('users');
-  const intern = users.find(u => u.id === userId && u.role === 'intern');
+  const intern = users.find(u => {
+    const uId1 = u.id;
+    const uId2 = u._id ? u._id.toString() : null;
+    return (uId1 === userId || uId2 === userId) && u.role === 'intern';
+  });
   if (!intern) {
     return res.status(400).json({ error: 'Valid intern ID is required' });
   }
 
+  const internIdToSave = intern.id ? intern.id : (intern._id ? intern._id.toString() : userId);
+
   const newTask = {
     id: `tsk-${Date.now()}`,
-    userId,
+    userId: internIdToSave,
     title,
     description,
     status: 'In Progress',
