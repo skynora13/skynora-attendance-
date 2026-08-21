@@ -453,9 +453,12 @@ app.get('/api/admin/monthly-reports', async (req, res) => {
   // Aggregate monthly report metrics for each intern
   const reports = users.map(user => {
     const uId = user._id ? user._id.toString() : user.id;
-    const userAttendance = attendance.filter(a => a.userId === uId);
-    const userTasks = tasks.filter(t => t.userId === uId);
-    const userLeaves = leaves.filter(l => l.userId === uId);
+    const uId1 = user.id;
+    const uId2 = user._id ? user._id.toString() : null;
+
+    const userAttendance = attendance.filter(a => a.userId === uId1 || a.userId === uId2);
+    const userTasks = tasks.filter(t => t.userId === uId1 || t.userId === uId2);
+    const userLeaves = leaves.filter(l => l.userId === uId1 || l.userId === uId2);
 
     // Group hours and days worked
     const totalHours = userAttendance.reduce((sum, a) => sum + (a.totalHours || 0), 0);
