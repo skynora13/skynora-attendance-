@@ -323,12 +323,23 @@ app.get('/api/admin/dashboard', async (req, res) => {
 
   const activeCount = attendance.filter(a => a.date === today && a.checkOut === null).length;
 
+  const targetDate = req.query.date;
+
   // Recent daily reports
-  const recentReports = attendance.filter(a => a.dailyReport && a.dailyReport.trim() !== '').sort((a,b) => {
+  let filteredReports = attendance.filter(a => a.dailyReport && a.dailyReport.trim() !== '');
+  if (targetDate) {
+    filteredReports = filteredReports.filter(a => a.date === targetDate);
+  }
+
+  const sortedReports = filteredReports.sort((a,b) => {
     const timeA = a.checkOut ? new Date(a.checkOut) : new Date(a.checkIn);
     const timeB = b.checkOut ? new Date(b.checkOut) : new Date(b.checkIn);
     return timeB - timeA;
-  }).slice(0, 10).map(a => {
+  });
+
+  const recentReportsSlice = targetDate ? sortedReports : sortedReports.slice(0, 10);
+
+  const recentReports = recentReportsSlice.map(a => {
     const intern = users.find(i => {
       const uId1 = i.id;
       const uId2 = i._id ? i._id.toString() : null;

@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="style.css">
   
   <!-- PWA Manifest & Mobile Config -->
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#6366f1">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -447,8 +447,12 @@
               </div>
 
               <div class="grid-card col-span-2">
-                <div class="card-header">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                   <h2>Recent Daily Reports</h2>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label for="reports-date-filter" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">Date Filter:</label>
+                    <input type="date" id="reports-date-filter" style="width: auto; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-primary);">
+                  </div>
                 </div>
                 <div class="card-body list-scroll" id="recent-reports-container">
                   <!-- Recent daily reports list -->

@@ -169,14 +169,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // iOS Safari Install helper instruction popup
+  // iOS Safari & WebView Install helper instruction popup
   const iosParams = new URLSearchParams(window.location.search);
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  if (iosParams.get('install') === 'true' && isIOS && !isStandalone) {
-    setTimeout(() => {
-      showToast("To install: Tap Safari's Share button (box with up arrow) and select 'Add to Home Screen'!", 8000);
-    }, 1500);
+  const isWebView = /FBAN|FBAV|Instagram|Twitter|WebView|wv|telegram|whatsapp/i.test(navigator.userAgent) || 
+                    (isIOS && !/Safari/i.test(navigator.userAgent));
+
+  if (iosParams.get('install') === 'true' && !isStandalone) {
+    if (isWebView) {
+      setTimeout(() => {
+        showToast("⚠️ Opened in a WebView. Tap the 3 dots (...) in the corner and select 'Open in Browser' to install!", 10000);
+      }, 1000);
+    } else if (isIOS) {
+      setTimeout(() => {
+        showToast("To install: Tap Safari's Share button (box with up arrow) and select 'Add to Home Screen'!", 8000);
+      }, 1500);
+    }
+  }
+
+  // Reports date filter listener
+  const dateFilterInput = document.getElementById('reports-date-filter');
+  if (dateFilterInput) {
+    dateFilterInput.addEventListener('change', () => {
+      loadAdminOverview();
+    });
   }
 });
 
@@ -638,7 +655,14 @@ async function refreshAdminDashboardData() {
 // TAB 1: OVERVIEW
 async function loadAdminOverview(cachedData) {
   try {
-    const data = cachedData || await (await fetch('/api/admin/dashboard')).json();
+    let data;
+    if (cachedData) {
+      data = cachedData;
+    } else {
+      const dateVal = document.getElementById('reports-date-filter')?.value || '';
+      const url = dateVal ? `/api/admin/dashboard?date=${dateVal}` : '/api/admin/dashboard';
+      data = await (await fetch(url)).json();
+    }
 
     document.getElementById('stat-total-interns').textContent = data.internsCount;
     document.getElementById('stat-active-checkins').textContent = data.activeCount;
