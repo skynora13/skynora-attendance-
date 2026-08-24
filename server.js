@@ -901,7 +901,22 @@ app.get('/api/daily-info/feed', async (req, res) => {
     
     // Sort newest first
     activePosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json(activePosts);
+    
+    // Resolve profilePhoto dynamically from users collection to show in the feed
+    const users = await db.getCollection('users') || [];
+    const postsWithAvatars = activePosts.map(p => {
+      const user = users.find(u => {
+        const uId = u._id ? u._id.toString() : u.id;
+        const postUserId = p.userId ? p.userId.toString() : '';
+        return uId === postUserId;
+      });
+      return {
+        ...p,
+        profilePhoto: user ? user.profilePhoto : null
+      };
+    });
+    
+    res.json(postsWithAvatars);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
