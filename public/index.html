@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
   <link rel="stylesheet" href="style.css">
   
   <!-- PWA Manifest & Mobile Config -->
@@ -806,7 +808,13 @@
                 <div id="history-results-area" style="display: none;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
                     <h3 style="margin: 0; font-weight: 700;" id="history-intern-title">Work History Logs</h3>
-                    <span id="history-total-days-badge" class="badge" style="background-color: var(--accent-color); color: white; border-color: var(--accent-color);">0 Days Logged</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <button class="btn btn-secondary btn-sm" id="export-history-pdf-btn" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; border-color: var(--accent-color); color: var(--accent-color);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download" style="vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        Export PDF
+                      </button>
+                      <span id="history-total-days-badge" class="badge" style="background-color: var(--accent-color); color: white; border-color: var(--accent-color);">0 Days Logged</span>
+                    </div>
                   </div>
 
                   <div class="overflow-x">

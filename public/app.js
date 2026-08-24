@@ -1,5 +1,6 @@
 // Global State
 let currentUser = null;
+let currentInternHistoryData = null;
 
 // DOM Elements
 const toastEl = document.getElementById('toast');
@@ -117,6 +118,128 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         showToast(err.message);
       }
+    });
+  }
+
+  // PDF Export for Intern History
+  const exportPdfBtn = document.getElementById('export-history-pdf-btn');
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', () => {
+      if (!currentInternHistoryData || !currentInternHistoryData.logs || currentInternHistoryData.logs.length === 0) {
+        showToast('No history data available to export.');
+        return;
+      }
+      
+      const { intern, logs } = currentInternHistoryData;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Header Section
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(99, 102, 241); // indigo color
+      doc.text("SKYNORA TECHNOLOGIES", 14, 20);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(17, 24, 39); // dark gray
+      doc.text("Intern Work & Attendance History Report", 14, 28);
+      
+      // Metadata line
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.5);
+      doc.line(14, 33, 196, 33);
+      
+      // Intern details
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(75, 85, 99); // gray
+      doc.text(`Intern Name:`, 14, 40);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(intern.name, 45, 40);
+      
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Email Address:`, 14, 46);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(intern.email || 'N/A', 45, 46);
+      
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Domain:`, 14, 52);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(intern.domain, 45, 52);
+      
+      // Summary Stats
+      const totalHours = logs.reduce((sum, log) => sum + (log.totalHours || 0), 0);
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Total Days Logged:`, 110, 40);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(`${logs.length} Days`, 150, 40);
+      
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Total Hours:`, 110, 46);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(`${totalHours.toFixed(1)} hrs`, 150, 46);
+      
+      doc.setFont("Helvetica", "normal");
+      doc.setTextColor(75, 85, 99);
+      doc.text(`Report Generated:`, 110, 52);
+      doc.setFont("Helvetica", "bold");
+      doc.setTextColor(17, 24, 39);
+      doc.text(new Date().toLocaleDateString(), 150, 52);
+      
+      doc.line(14, 57, 196, 57);
+      
+      // Table creation using autoTable
+      const daysShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const tableRows = logs.map(log => {
+        const dateObj = new Date(log.date);
+        const dayName = daysShort[dateObj.getDay()];
+        const formattedDate = `${log.date} (${dayName})`;
+        
+        const checkInTime = new Date(log.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const checkOutTime = log.checkOut 
+          ? new Date(log.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : 'Active';
+        const duration = log.totalHours ? `${log.totalHours} hrs` : '--';
+        const report = log.dailyReport || 'No work report submitted';
+        
+        return [formattedDate, checkInTime, checkOutTime, duration, report];
+      });
+      
+      doc.autoTable({
+        startY: 62,
+        head: [['Date / Day', 'Check In', 'Check Out', 'Hours', 'Daily Work Report']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [99, 102, 241], fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 'auto' }
+        },
+        styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+        didDrawPage: function (data) {
+          // Footer
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFont("Helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(156, 163, 175);
+          doc.text(`Page ${data.pageNumber} of ${pageCount}`, doc.internal.pageSize.width - 30, doc.internal.pageSize.height - 10);
+        }
+      });
+      
+      // Save PDF
+      doc.save(`${intern.name.replace(/\s+/g, '_')}_attendance_history.pdf`);
     });
   }
 
@@ -1136,6 +1259,7 @@ function populateHistoryDropdown(reports) {
 }
 
 function renderInternHistory(data) {
+  currentInternHistoryData = data;
   const resultsArea = document.getElementById('history-results-area');
   if (!resultsArea) return;
   
