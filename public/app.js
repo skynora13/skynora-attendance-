@@ -481,7 +481,9 @@ async function updateAttendanceStatus() {
 
       const savedDraft = localStorage.getItem('skynora_daily_report_draft');
       if (savedDraft) {
-        document.getElementById('daily-report-input').value = savedDraft;
+        const inputEl = document.getElementById('daily-report-input');
+        inputEl.value = savedDraft;
+        inputEl.dispatchEvent(new Event('input'));
       }
     } else {
       // Checked out and finished
@@ -523,13 +525,35 @@ document.getElementById('check-in-btn').addEventListener('click', async () => {
 
 // Check out button trigger
 document.getElementById('daily-report-input').addEventListener('input', (e) => {
-  localStorage.setItem('skynora_daily_report_draft', e.target.value);
+  const val = e.target.value;
+  localStorage.setItem('skynora_daily_report_draft', val);
+
+  // Calculate word count
+  const words = val.trim().split(/\s+/).filter(w => w.length > 0);
+  const count = words.length;
+
+  const counterSpan = document.getElementById('daily-report-word-count');
+  if (counterSpan) {
+    counterSpan.textContent = `${count} / 40 words`;
+    if (count >= 40) {
+      counterSpan.style.color = 'var(--status-success)';
+    } else {
+      counterSpan.style.color = 'var(--status-danger)';
+    }
+  }
 });
 
 document.getElementById('check-out-btn').addEventListener('click', async () => {
   const dailyReport = document.getElementById('daily-report-input').value.trim();
   if (!dailyReport) {
     showToast('Please describe the work completed in your daily report before checking out.');
+    return;
+  }
+
+  // Word count check
+  const words = dailyReport.split(/\s+/).filter(w => w.length > 0);
+  if (words.length < 40) {
+    showToast(`⚠️ Daily report must contain at least 40 words. (Current: ${words.length} words)`);
     return;
   }
 
@@ -545,6 +569,14 @@ document.getElementById('check-out-btn').addEventListener('click', async () => {
     showToast('Session ended and daily report submitted!');
     triggerNotification('Session Checked Out', 'Your daily report has been submitted.');
     document.getElementById('daily-report-input').value = '';
+    
+    // Reset counter text
+    const counterSpan = document.getElementById('daily-report-word-count');
+    if (counterSpan) {
+      counterSpan.textContent = '0 / 40 words';
+      counterSpan.style.color = 'var(--status-danger)';
+    }
+
     localStorage.removeItem('skynora_daily_report_draft');
     updateAttendanceStatus();
     loadInternAttendanceCalendar();
