@@ -393,6 +393,7 @@ function logout() {
 // Route to dashboards
 function setupDashboard() {
   loginSection.classList.add('hidden');
+  updateAppAvatars();
   if (currentUser.role === 'intern') {
     internDashboard.classList.remove('hidden');
     adminDashboard.classList.add('hidden');
@@ -1630,6 +1631,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Handle Profile Photo Uploads
+  const handleProfilePhotoChange = async (fileInput, prefix) => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Profile photo must be less than 5MB.');
+      fileInput.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Photo = reader.result;
+      const userId = currentUser._id || currentUser.id;
+
+      try {
+        const res = await fetch('/api/user/profile-photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, profilePhoto: base64Photo })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          currentUser.profilePhoto = data.profilePhoto;
+          localStorage.setItem('skynora_user', JSON.stringify(currentUser));
+          updateAppAvatars();
+          showToast('Profile photo updated successfully!');
+        } else {
+          const errData = await res.json();
+          showToast(errData.error || 'Failed to upload photo.');
+        }
+      } catch (err) {
+        showToast(err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const internPhotoInput = document.getElementById('intern-profile-photo-input');
+  if (internPhotoInput) {
+    internPhotoInput.addEventListener('change', () => handleProfilePhotoChange(internPhotoInput, 'intern'));
+  }
+
+  const adminPhotoInput = document.getElementById('admin-profile-photo-input');
+  if (adminPhotoInput) {
+    adminPhotoInput.addEventListener('change', () => handleProfilePhotoChange(adminPhotoInput, 'admin'));
+  }
+
   // Initialize Daily Info
   initDailyInfo();
 });
@@ -2232,13 +2283,22 @@ function renderDailyInfoFeed(posts, elementId) {
       commentsHtml = `<p style="font-size: 12px; color: var(--text-secondary); font-style: italic; margin-top: 4px; padding: 4px 8px;">No comments yet. Share your thoughts!</p>`;
     }
     
+    let avatarHtml = '';
+    if (post.profilePhoto) {
+      avatarHtml = `<img src="${post.profilePhoto}" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color);">`;
+    } else {
+      avatarHtml = `
+        <div style="width: 38px; height: 38px; border-radius: 50%; background-color: var(--accent-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">
+          ${post.username.charAt(0).toUpperCase()}
+        </div>
+      `;
+    }
+    
     card.innerHTML = `
       <div class="card-body" style="padding: 16px;">
         <!-- Header -->
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-          <div style="width: 38px; height: 38px; border-radius: 50%; background-color: var(--accent-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">
-            ${post.username.charAt(0).toUpperCase()}
-          </div>
+          ${avatarHtml}
           <div>
             <h4 style="margin: 0; font-weight: 700; color: var(--text-primary); font-size: 14px;">${post.username}</h4>
             <span style="font-size: 11px; color: var(--text-secondary); display: block;">${post.userDomain} • ${timeAgo}</span>
@@ -2505,4 +2565,36 @@ function formatTimeAgo(date) {
   interval = Math.floor(seconds / 60);
   if (interval >= 1) return interval + "m ago";
   return "just now";
+}
+
+// Update Avatars in nav bars and settings panels
+function updateAppAvatars() {
+  if (!currentUser) return;
+  const photo = currentUser.profilePhoto;
+  const prefix = currentUser.role === 'admin' ? 'admin' : 'intern';
+  
+  const navAvatar = document.getElementById(`${prefix}-nav-avatar`);
+  const settingsAvatar = document.getElementById(`${prefix}-settings-avatar`);
+  const placeholder = document.getElementById(`${prefix}-settings-avatar-placeholder`);
+  
+  if (photo) {
+    if (navAvatar) {
+      navAvatar.src = photo;
+      navAvatar.style.display = 'block';
+    }
+    if (settingsAvatar) {
+      settingsAvatar.src = photo;
+      settingsAvatar.style.display = 'block';
+    }
+    if (placeholder) {
+      placeholder.style.display = 'none';
+    }
+  } else {
+    if (navAvatar) navAvatar.style.display = 'none';
+    if (settingsAvatar) settingsAvatar.style.display = 'none';
+    if (placeholder) {
+      placeholder.style.display = 'flex';
+      placeholder.textContent = currentUser.name.charAt(0).toUpperCase();
+    }
+  }
 }

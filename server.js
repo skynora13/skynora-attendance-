@@ -271,6 +271,33 @@ app.post('/api/user/change-password', async (req, res) => {
   res.json({ success: true, message: 'Password updated successfully' });
 });
 
+// User: Update Profile Photo
+app.post('/api/user/profile-photo', async (req, res) => {
+  try {
+    const { userId, profilePhoto } = req.body;
+    if (!userId || !profilePhoto) {
+      return res.status(400).json({ error: 'User ID and profile photo data are required' });
+    }
+
+    const updated = await db.update('users', userId, { profilePhoto });
+    if (!updated) {
+      // Fallback lookup if update returns null because of ID matching mismatch
+      const users = await db.getCollection('users') || [];
+      const index = users.findIndex(u => (u._id ? u._id.toString() : u.id) === userId.toString());
+      if (index !== -1) {
+        users[index].profilePhoto = profilePhoto;
+        await db.saveCollection('users', users);
+      } else {
+        return res.status(404).json({ error: 'User not found' });
+      }
+    }
+
+    res.json({ success: true, profilePhoto });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin: Get Interns and their summary
 app.get('/api/admin/interns', async (req, res) => {
   const users = (await db.getCollection('users')).filter(u => u.role === 'intern');
