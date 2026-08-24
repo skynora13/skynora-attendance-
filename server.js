@@ -9,6 +9,19 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Self-ping keep-alive to prevent Render free tier from sleeping (cold starts)
+if (process.env.RENDER_EXTERNAL_URL) {
+  const https = require('https');
+  setInterval(() => {
+    const url = process.env.RENDER_EXTERNAL_URL;
+    https.get(url, (res) => {
+      console.log(`Keep-alive ping sent to ${url}. Status code: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error(`Keep-alive ping failed: ${err.message}`);
+    });
+  }, 5 * 60 * 1000); // Ping every 5 minutes
+}
+
 // Helpers
 function getTodayDate() {
   const now = new Date();

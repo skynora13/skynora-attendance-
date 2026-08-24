@@ -114,7 +114,7 @@ let useMongo = true;
 
 if (MONGODB_URI) {
   useMongo = true;
-  client = new MongoClient(MONGODB_URI);
+  client = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 3000, connectTimeoutMS: 3000 });
 }
 
 async function connectDb() {
