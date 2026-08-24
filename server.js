@@ -920,7 +920,7 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
   }
 });
 
-// Get Feed (Active posts in last 24 hours)
+// Get Feed (Active posts in last 24 hours) - resolves viewer profiles dynamically
 app.get('/api/daily-info/feed', async (req, res) => {
   try {
     const posts = await db.getCollection('daily_info_posts') || [];
@@ -948,13 +948,59 @@ app.get('/api/daily-info/feed', async (req, res) => {
         const postUserId = p.userId ? p.userId.toString() : '';
         return uId === postUserId;
       });
+      
+      // Resolve details for users who viewed this post
+      const resolvedViews = (p.views || []).map(vId => {
+        const viewer = users.find(u => {
+          const uId = u._id ? u._id.toString() : u.id;
+          return uId === vId.toString();
+        });
+        return viewer ? {
+          userId: vId,
+          name: viewer.name,
+          domain: viewer.domain,
+          profilePhoto: viewer.profilePhoto || null
+        } : null;
+      }).filter(v => v !== null);
+
       return {
         ...p,
-        profilePhoto: user ? user.profilePhoto : null
+        profilePhoto: user ? user.profilePhoto : null,
+        viewsList: resolvedViews
       };
     });
     
     res.json(postsWithAvatars);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// View Post (Record when an intern/admin views a post)
+app.post('/api/daily-info/post/view', async (req, res) => {
+  try {
+    const { postId, userId } = req.body;
+    if (!postId || !userId) {
+      return res.status(400).json({ error: 'Post ID and User ID are required.' });
+    }
+    
+    const posts = await db.getCollection('daily_info_posts') || [];
+    const index = posts.findIndex(p => p.id === postId);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+    
+    if (!posts[index].views) {
+      posts[index].views = [];
+    }
+    
+    const userIdStr = userId.toString();
+    if (!posts[index].views.includes(userIdStr)) {
+      posts[index].views.push(userIdStr);
+      await db.saveCollection('daily_info_posts', posts);
+    }
+    
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

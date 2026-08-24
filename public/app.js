@@ -2221,6 +2221,15 @@ function initDailyInfo() {
       modal.style.display = 'none';
     });
   }
+
+  const closeViewsModalBtn = document.getElementById('close-views-modal-btn');
+  if (closeViewsModalBtn) {
+    closeViewsModalBtn.addEventListener('click', () => {
+      const modal = document.getElementById('views-list-modal');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    });
+  }
   
   const editScheduleForm = document.getElementById('edit-schedule-form');
   if (editScheduleForm) {
@@ -2391,7 +2400,7 @@ function renderDailyInfoFeed(posts, elementId) {
         ${mediaHtml}
         
         <!-- Interaction Row -->
-        <div style="display: flex; gap: 16px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 8px 0; margin-top: 14px;">
+        <div style="display: flex; gap: 16px; align-items: center; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 8px 0; margin-top: 14px;">
           <button class="like-post-btn" data-id="${post.id}" style="border: none; background: ${likeBtnBg}; color: ${likeBtnColor}; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
             <span>${post.likes ? post.likes.length : 0} Likes</span>
@@ -2401,6 +2410,11 @@ function renderDailyInfoFeed(posts, elementId) {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             <span>${post.comments ? post.comments.length : 0} Comments</span>
           </div>
+
+          <button class="views-list-btn" data-id="${post.id}" style="border: none; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; padding: 4px 8px; cursor: pointer; font-size: 13px; font-weight: 600; margin-left: auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>${post.viewsList ? post.viewsList.length : 0} Views</span>
+          </button>
         </div>
         
         <!-- Comments List -->
@@ -2417,6 +2431,13 @@ function renderDailyInfoFeed(posts, elementId) {
     `;
     
     container.appendChild(card);
+
+    // Register view in background
+    fetch('/api/daily-info/post/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId: post.id, userId })
+    }).catch(() => {});
   });
   
   // Attach like button click actions
@@ -2483,6 +2504,59 @@ function renderDailyInfoFeed(posts, elementId) {
         showToast(err.message);
       } finally {
         submitBtn.disabled = false;
+      }
+    });
+  });
+
+  // Attach views button click actions
+  container.querySelectorAll('.views-list-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const postId = btn.getAttribute('data-id');
+      const targetPost = posts.find(p => p.id === postId);
+      if (!targetPost) return;
+
+      const listContainer = document.getElementById('views-list-container');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+
+      const viewers = targetPost.viewsList || [];
+      if (viewers.length === 0) {
+        listContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px 0; font-size: 13px;">No one has viewed this post yet.</p>';
+      } else {
+        viewers.forEach(v => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.gap = '10px';
+          row.style.padding = '8px 0';
+          row.style.borderBottom = '1px solid var(--border-color)';
+
+          let avatarHtml = '';
+          if (v.profilePhoto) {
+            avatarHtml = `<img src="${v.profilePhoto}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color);">`;
+          } else {
+            avatarHtml = `
+              <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--accent-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">
+                ${v.name.charAt(0).toUpperCase()}
+              </div>
+            `;
+          }
+
+          row.innerHTML = `
+            ${avatarHtml}
+            <div style="flex: 1;">
+              <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary);">${v.name}</h4>
+              <p style="margin: 2px 0 0 0; font-size: 11px; color: var(--text-secondary);">${v.domain}</p>
+            </div>
+          `;
+          listContainer.appendChild(row);
+        });
+      }
+
+      const modal = document.getElementById('views-list-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
       }
     });
   });
