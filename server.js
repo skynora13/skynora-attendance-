@@ -781,7 +781,7 @@ app.get('/api/daily-info/schedule', async (req, res) => {
   }
 });
 
-// Edit Schedule (Admin only)
+// Edit Schedule (Admin only) - with Swap feature to prevent duplicate assignments
 app.post('/api/daily-info/schedule/edit', async (req, res) => {
   try {
     const { date, userId } = req.body;
@@ -793,6 +793,16 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
     const index = daily_info_schedule.findIndex(s => s.date === date);
     
     if (index !== -1) {
+      const oldUserId = daily_info_schedule[index].userId;
+      
+      // Swap: Find if the new user (userId) is already scheduled on a different date
+      const duplicateIndex = daily_info_schedule.findIndex(s => s.date !== date && s.userId === userId);
+      if (duplicateIndex !== -1) {
+        // Swap their slots so oldUserId takes the new user's original slot
+        daily_info_schedule[duplicateIndex].userId = oldUserId;
+      }
+      
+      // Assign new user to the target date
       daily_info_schedule[index].userId = userId;
     } else {
       daily_info_schedule.push({

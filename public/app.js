@@ -2086,7 +2086,9 @@ function initDailyInfo() {
   const closeScheduleModalBtn = document.getElementById('close-schedule-modal-btn');
   if (closeScheduleModalBtn) {
     closeScheduleModalBtn.addEventListener('click', () => {
-      document.getElementById('edit-schedule-modal').style.display = 'none';
+      const modal = document.getElementById('edit-schedule-modal');
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
     });
   }
   
@@ -2106,7 +2108,9 @@ function initDailyInfo() {
         
         if (res.ok) {
           showToast('Speaker schedule updated successfully!');
-          document.getElementById('edit-schedule-modal').style.display = 'none';
+          const modal = document.getElementById('edit-schedule-modal');
+          modal.classList.add('hidden');
+          modal.style.display = 'none';
           loadAdminDailyInfo();
         } else {
           const errData = await res.json();
@@ -2394,6 +2398,7 @@ function renderAdminScheduleRoster(data) {
       });
       
       const modal = document.getElementById('edit-schedule-modal');
+      modal.classList.remove('hidden');
       modal.style.display = 'flex';
     });
   });
