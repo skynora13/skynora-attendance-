@@ -1137,3 +1137,51 @@ body.dark-theme .tear-off-middle::before {
 #registered-interns-body tr:hover {
   background-color: var(--bg-secondary);
 }
+
+/* Nav Sky Video Background */
+.nav-sky-video {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .nav-sky-video {
+    display: block;
+    opacity: 0.65;
+  }
+  .nav-bar {
+    position: relative;
+    overflow: hidden;
+    background-color: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+  }
+  .nav-bar * {
+    z-index: 2;
+  }
+  .nav-bar .logo {
+    color: white !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+  .nav-bar .logo::before {
+    color: white !important;
+  }
+  .nav-bar .user-name {
+    color: white !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+  .nav-bar .menu-toggle-btn {
+    color: white !important;
+  }
+  .nav-bar .badge {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .nav-bar .btn-secondary {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
