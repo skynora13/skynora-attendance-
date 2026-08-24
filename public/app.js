@@ -525,20 +525,29 @@ document.getElementById('check-in-btn').addEventListener('click', async () => {
 
 // Check out button trigger
 document.getElementById('daily-report-input').addEventListener('input', (e) => {
-  const val = e.target.value;
-  localStorage.setItem('skynora_daily_report_draft', val);
+  let val = e.target.value;
 
   // Calculate word count
-  const words = val.trim().split(/\s+/).filter(w => w.length > 0);
+  let words = val.trim().split(/\s+/).filter(w => w.length > 0);
+  
+  if (words.length > 40) {
+    // Truncate to exactly 40 words
+    val = words.slice(0, 40).join(' ');
+    e.target.value = val;
+    words = val.trim().split(/\s+/).filter(w => w.length > 0);
+    showToast('Maximum limit of 40 words reached.');
+  }
+
+  localStorage.setItem('skynora_daily_report_draft', val);
   const count = words.length;
 
   const counterSpan = document.getElementById('daily-report-word-count');
   if (counterSpan) {
     counterSpan.textContent = `${count} / 40 words`;
     if (count >= 40) {
-      counterSpan.style.color = 'var(--status-success)';
-    } else {
       counterSpan.style.color = 'var(--status-danger)';
+    } else {
+      counterSpan.style.color = 'var(--text-secondary)';
     }
   }
 });
@@ -547,13 +556,6 @@ document.getElementById('check-out-btn').addEventListener('click', async () => {
   const dailyReport = document.getElementById('daily-report-input').value.trim();
   if (!dailyReport) {
     showToast('Please describe the work completed in your daily report before checking out.');
-    return;
-  }
-
-  // Word count check
-  const words = dailyReport.split(/\s+/).filter(w => w.length > 0);
-  if (words.length < 40) {
-    showToast(`⚠️ Daily report must contain at least 40 words. (Current: ${words.length} words)`);
     return;
   }
 
