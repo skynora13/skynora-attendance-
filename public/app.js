@@ -435,6 +435,8 @@ async function initInternDashboard() {
       }
     }, 12000);
   }
+
+  await loadInternDailyInfo();
 }
 
 async function loadInternAttendanceCalendar() {
@@ -706,6 +708,7 @@ async function loadInternTasks() {
 async function initAdminDashboard() {
   setupAdminTabs();
   await refreshAdminDashboardData();
+  await loadAdminDailyInfo();
 }
 
 function setupAdminTabs() {
@@ -728,6 +731,7 @@ function setupAdminTabs() {
       if (targetId === 'admin-tasks') loadAdminTasks();
       if (targetId === 'admin-leaves') loadAdminLeaves();
       if (targetId === 'admin-reports') loadPerformanceReports();
+      if (targetId === 'admin-daily-info') loadAdminDailyInfo();
     });
   });
 }
@@ -749,6 +753,9 @@ function setupInternTabs() {
       if (targetId === 'intern-tasks') {
         const badge = document.getElementById('tasks-notif-badge');
         if (badge) badge.classList.add('hidden');
+      }
+      if (targetId === 'intern-daily-info') {
+        loadInternDailyInfo();
       }
     });
   });
@@ -1622,6 +1629,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Initialize Daily Info
+  initDailyInfo();
 });
 
 // Admin Dashboard Calendar Loader
@@ -1901,4 +1911,593 @@ function initDoubleCalendar(prefix, attendanceList, leavesList) {
   }
   
   drawCells();
+}
+
+// ==========================================
+// DAILY INFORMATION FEATURE FRONTEND LOGIC
+// ==========================================
+
+let dailyInfoTimerInterval = null;
+let dailyInfoAlertTriggered = false;
+
+// Format dates in YYYY-MM-DD
+function getLocalDateString(dateObj) {
+  const offset = dateObj.getTimezoneOffset();
+  const localDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().split('T')[0];
+}
+
+// Play Alert sound using Web Audio API
+function playAlertSound() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const playTone = (freq, startTime, duration) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    
+    // Play sequence
+    playTone(523.25, audioCtx.currentTime, 0.4); // C5
+    playTone(659.25, audioCtx.currentTime + 0.15, 0.4); // E5
+    playTone(783.99, audioCtx.currentTime + 0.3, 0.6); // G5
+  } catch (e) {
+    console.error("Audio API error:", e);
+  }
+}
+
+// Trigger push/desktop notifications
+function showDesktopNotification() {
+  if (Notification.permission === 'granted') {
+    new Notification("Skynora Attendance Portal", {
+      body: "⏰ It's your scheduled turn to share Daily Information updates today!",
+      icon: "https://img.icons8.com/color/192/000000/attendance.png"
+    });
+  }
+}
+
+// Initialize Daily Info event listeners (forms and media upload)
+function initDailyInfo() {
+  // Creator form handlers
+  const postForm = document.getElementById('daily-info-post-form');
+  if (postForm) {
+    postForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submit-daily-info-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Posting...';
+      
+      const text = document.getElementById('daily-info-text').value;
+      const mediaInput = document.getElementById('daily-info-media');
+      const userId = currentUser._id || currentUser.id;
+      
+      let mediaUrl = '';
+      let mediaType = 'none';
+      
+      const file = mediaInput.files[0];
+      if (file) {
+        mediaType = file.type.startsWith('video/') ? 'video' : 'photo';
+        
+        // Convert file to Base64 string
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
+        mediaUrl = await base64Promise;
+      }
+      
+      try {
+        const res = await fetch('/api/daily-info/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, text, mediaUrl, mediaType })
+        });
+        
+        if (res.ok) {
+          showToast('Daily update posted successfully!');
+          postForm.reset();
+          document.getElementById('daily-info-media-filename').textContent = 'No file chosen';
+          document.getElementById('clear-media-btn').classList.add('hidden');
+          const preview = document.getElementById('media-preview-container');
+          preview.classList.add('hidden');
+          preview.innerHTML = '';
+          
+          loadInternDailyInfo();
+        } else {
+          const errData = await res.json();
+          showToast(errData.error || 'Failed to post update.');
+        }
+      } catch (err) {
+        showToast(err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Post to Feed';
+      }
+    });
+  }
+  
+  // Media file change preview & duration validation
+  const mediaInput = document.getElementById('daily-info-media');
+  if (mediaInput) {
+    mediaInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      document.getElementById('daily-info-media-filename').textContent = file.name;
+      document.getElementById('clear-media-btn').classList.remove('hidden');
+      
+      const previewContainer = document.getElementById('media-preview-container');
+      previewContainer.innerHTML = '';
+      previewContainer.classList.remove('hidden');
+      
+      if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.style.width = '100%';
+        video.controls = true;
+        video.src = URL.createObjectURL(file);
+        
+        video.onloadedmetadata = function() {
+          if (video.duration > 30) {
+            showToast('⚠️ Video exceeds 30 seconds! Please select a shorter video.');
+            mediaInput.value = '';
+            document.getElementById('daily-info-media-filename').textContent = 'No file chosen';
+            document.getElementById('clear-media-btn').classList.add('hidden');
+            previewContainer.classList.add('hidden');
+            previewContainer.innerHTML = '';
+          }
+        };
+        previewContainer.appendChild(video);
+      } else if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.style.width = '100%';
+        img.src = URL.createObjectURL(file);
+        previewContainer.appendChild(img);
+      }
+    });
+  }
+  
+  // Clear media attachment button
+  const clearMediaBtn = document.getElementById('clear-media-btn');
+  if (clearMediaBtn) {
+    clearMediaBtn.addEventListener('click', () => {
+      mediaInput.value = '';
+      document.getElementById('daily-info-media-filename').textContent = 'No file chosen';
+      clearMediaBtn.classList.add('hidden');
+      const preview = document.getElementById('media-preview-container');
+      preview.classList.add('hidden');
+      preview.innerHTML = '';
+    });
+  }
+  
+  // Admin Edit Schedule Modal actions
+  const closeScheduleModalBtn = document.getElementById('close-schedule-modal-btn');
+  if (closeScheduleModalBtn) {
+    closeScheduleModalBtn.addEventListener('click', () => {
+      document.getElementById('edit-schedule-modal').style.display = 'none';
+    });
+  }
+  
+  const editScheduleForm = document.getElementById('edit-schedule-form');
+  if (editScheduleForm) {
+    editScheduleForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const date = document.getElementById('edit-schedule-date').value;
+      const userId = document.getElementById('edit-schedule-intern-select').value;
+      
+      try {
+        const res = await fetch('/api/daily-info/schedule/edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, userId })
+        });
+        
+        if (res.ok) {
+          showToast('Speaker schedule updated successfully!');
+          document.getElementById('edit-schedule-modal').style.display = 'none';
+          loadAdminDailyInfo();
+        } else {
+          const errData = await res.json();
+          showToast(errData.error || 'Failed to update schedule.');
+        }
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  }
+}
+
+// Load Intern Daily Info View
+async function loadInternDailyInfo() {
+  try {
+    const userId = currentUser._id || currentUser.id;
+    
+    // Fetch Schedule and Feed concurrently
+    const [schedRes, feedRes] = await Promise.all([
+      fetch('/api/daily-info/schedule?days=30'),
+      fetch('/api/daily-info/feed')
+    ]);
+    
+    if (!schedRes.ok || !feedRes.ok) throw new Error("Failed to load daily information data.");
+    
+    const schedData = await schedRes.json();
+    const feedData = await feedRes.json();
+    
+    // Setup Countdown
+    startDailyInfoCountdown(schedData.schedule);
+    
+    // Render Feed
+    renderDailyInfoFeed(feedData, 'daily-info-feed-list');
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// Load Admin Daily Info View
+async function loadAdminDailyInfo() {
+  try {
+    const [schedRes, feedRes] = await Promise.all([
+      fetch('/api/daily-info/schedule?days=14'),
+      fetch('/api/daily-info/feed')
+    ]);
+    
+    if (!schedRes.ok || !feedRes.ok) throw new Error("Failed to load daily information data.");
+    
+    const schedData = await schedRes.json();
+    const feedData = await feedRes.json();
+    
+    // Render Schedule Roster
+    renderAdminScheduleRoster(schedData);
+    
+    // Render Feed
+    renderDailyInfoFeed(feedData, 'admin-daily-info-feed-list');
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+// Render Social Feed List (reused on both dashboards)
+function renderDailyInfoFeed(posts, elementId) {
+  const container = document.getElementById(elementId);
+  if (!container) return;
+  
+  if (posts.length === 0) {
+    container.innerHTML = `
+      <div class="grid-card" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+        <p style="font-size: 24px; margin-bottom: 8px;">📢</p>
+        <p style="font-weight: 600; margin: 0;">No active posts in the last 24 hours.</p>
+        <p style="font-size: 13px; opacity: 0.8; margin-top: 4px;">Updates expire automatically after 24 hours.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  const userId = currentUser._id || currentUser.id;
+  container.innerHTML = '';
+  
+  posts.forEach(post => {
+    const card = document.createElement('div');
+    card.className = 'grid-card';
+    card.style.marginBottom = '16px';
+    
+    const timeAgo = formatTimeAgo(new Date(post.createdAt));
+    const isLiked = post.likes && post.likes.includes(userId);
+    const likeBtnColor = isLiked ? 'var(--status-danger)' : 'var(--text-secondary)';
+    const likeBtnBg = isLiked ? 'rgba(239, 68, 68, 0.05)' : 'transparent';
+    const hasMedia = post.mediaUrl && post.mediaType !== 'none';
+    
+    let mediaHtml = '';
+    if (hasMedia) {
+      if (post.mediaType === 'video') {
+        mediaHtml = `
+          <div style="margin-top: 12px; border-radius: 8px; overflow: hidden; background-color: #000; max-height: 400px; display: flex; justify-content: center;">
+            <video src="${post.mediaUrl}" controls style="width: 100%; max-height: 400px;"></video>
+          </div>
+        `;
+      } else {
+        mediaHtml = `
+          <div style="margin-top: 12px; border-radius: 8px; overflow: hidden; max-height: 400px; display: flex; justify-content: center; background-color: rgba(0,0,0,0.02); border: 1px solid var(--border-color);">
+            <img src="${post.mediaUrl}" style="max-width: 100%; max-height: 400px; object-fit: contain;">
+          </div>
+        `;
+      }
+    }
+    
+    let commentsHtml = '';
+    if (post.comments && post.comments.length > 0) {
+      commentsHtml = post.comments.map(c => `
+        <div style="padding: 8px 12px; background-color: rgba(0,0,0,0.02); border-radius: 6px; margin-top: 6px; font-size: 13px; line-height: 1.4;">
+          <strong style="color: var(--text-primary); font-weight: 600;">${c.username}</strong>
+          <span style="color: var(--text-secondary); font-size: 11px; margin-left: 6px;">${formatTimeAgo(new Date(c.createdAt))}</span>
+          <p style="margin: 4px 0 0 0; color: var(--text-secondary);">${escapeHtml(c.text)}</p>
+        </div>
+      `).join('');
+    } else {
+      commentsHtml = `<p style="font-size: 12px; color: var(--text-secondary); font-style: italic; margin-top: 4px; padding: 4px 8px;">No comments yet. Share your thoughts!</p>`;
+    }
+    
+    card.innerHTML = `
+      <div class="card-body" style="padding: 16px;">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; background-color: var(--accent-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">
+            ${post.username.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h4 style="margin: 0; font-weight: 700; color: var(--text-primary); font-size: 14px;">${post.username}</h4>
+            <span style="font-size: 11px; color: var(--text-secondary); display: block;">${post.userDomain} • ${timeAgo}</span>
+          </div>
+        </div>
+        
+        <!-- Post Text -->
+        <p style="margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: var(--text-primary);">${escapeHtml(post.text)}</p>
+        
+        <!-- Post Media -->
+        ${mediaHtml}
+        
+        <!-- Interaction Row -->
+        <div style="display: flex; gap: 16px; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 8px 0; margin-top: 14px;">
+          <button class="like-post-btn" data-id="${post.id}" style="border: none; background: ${likeBtnBg}; color: ${likeBtnColor}; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: background 0.2s;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-heart"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            <span>${post.likes ? post.likes.length : 0} Likes</span>
+          </button>
+          
+          <div style="color: var(--text-secondary); display: flex; align-items: center; gap: 6px; font-size: 13px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-square"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>${post.comments ? post.comments.length : 0} Comments</span>
+          </div>
+        </div>
+        
+        <!-- Comments List -->
+        <div style="margin-top: 12px; border-left: 2px solid var(--border-color); padding-left: 8px;">
+          ${commentsHtml}
+        </div>
+        
+        <!-- Add Comment Form -->
+        <form class="comment-post-form" data-id="${post.id}" style="display: flex; gap: 8px; margin-top: 10px;">
+          <input type="text" placeholder="Add a comment..." required style="flex-grow: 1; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px; background-color: var(--input-bg); color: var(--text-primary);">
+          <button type="submit" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px;">Comment</button>
+        </form>
+      </div>
+    `;
+    
+    container.appendChild(card);
+  });
+  
+  // Attach like button click actions
+  container.querySelectorAll('.like-post-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const postId = btn.getAttribute('data-id');
+      try {
+        const res = await fetch(`/api/daily-info/posts/${postId}/like`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        
+        if (res.ok) {
+          // Toggle styling instantly for visual responsiveness
+          const data = await res.json();
+          const likesCount = data.likes.length;
+          const likedNow = data.likes.includes(userId);
+          
+          btn.style.color = likedNow ? 'var(--status-danger)' : 'var(--text-secondary)';
+          btn.style.backgroundColor = likedNow ? 'rgba(239, 68, 68, 0.05)' : 'transparent';
+          btn.querySelector('span').textContent = `${likesCount} Likes`;
+          
+          const svg = btn.querySelector('svg');
+          if (likedNow) {
+            svg.setAttribute('fill', 'currentColor');
+          } else {
+            svg.setAttribute('fill', 'none');
+          }
+        }
+      } catch (err) {
+        showToast(err.message);
+      }
+    });
+  });
+  
+  // Attach comment submit actions
+  container.querySelectorAll('.comment-post-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const postId = form.getAttribute('data-id');
+      const input = form.querySelector('input');
+      const text = input.value;
+      const submitBtn = form.querySelector('button');
+      
+      submitBtn.disabled = true;
+      
+      try {
+        const res = await fetch(`/api/daily-info/posts/${postId}/comment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, text })
+        });
+        
+        if (res.ok) {
+          input.value = '';
+          if (elementId === 'daily-info-feed-list') {
+            loadInternDailyInfo();
+          } else {
+            loadAdminDailyInfo();
+          }
+        }
+      } catch (err) {
+        showToast(err.message);
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  });
+}
+
+// Render Admin Roster Schedule Table
+function renderAdminScheduleRoster(data) {
+  const tbody = document.getElementById('admin-daily-info-schedule-body');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '';
+  
+  const todayStr = getLocalDateString(new Date());
+  
+  data.schedule.forEach(slot => {
+    const isToday = slot.date === todayStr;
+    const dateLabel = isToday ? `<strong>Today (${slot.date})</strong>` : slot.date;
+    
+    const tr = document.createElement('tr');
+    if (isToday) tr.style.backgroundColor = 'rgba(99, 102, 241, 0.03)';
+    
+    tr.innerHTML = `
+      <td>${dateLabel}</td>
+      <td style="font-weight: 600;">${slot.internName}</td>
+      <td><span class="badge" style="background-color: var(--card-bg); font-size: 11px;">${slot.internDomain}</span></td>
+      <td>
+        <button class="btn btn-secondary btn-sm edit-slot-btn" data-date="${slot.date}" data-user="${slot.userId}" style="padding: 2px 8px; font-size: 11px;">Edit</button>
+      </td>
+    `;
+    
+    tbody.appendChild(tr);
+  });
+  
+  // Bind Edit button actions
+  tbody.querySelectorAll('.edit-slot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const date = btn.getAttribute('data-date');
+      const currentUserId = btn.getAttribute('data-user');
+      
+      document.getElementById('edit-schedule-date').value = date;
+      document.getElementById('edit-schedule-date-display').value = date;
+      
+      const select = document.getElementById('edit-schedule-intern-select');
+      select.innerHTML = '';
+      
+      data.interns.forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = `${it.name} (${it.domain})`;
+        if (it.id === currentUserId) opt.selected = true;
+        select.appendChild(opt);
+      });
+      
+      const modal = document.getElementById('edit-schedule-modal');
+      modal.style.display = 'flex';
+    });
+  });
+}
+
+// Start/Update the timer countdown for interns
+function startDailyInfoCountdown(schedule) {
+  if (dailyInfoTimerInterval) {
+    clearInterval(dailyInfoTimerInterval);
+  }
+  
+  const todayStr = getLocalDateString(new Date());
+  
+  // Find the user's next upcoming schedule slot
+  const userId = currentUser._id || currentUser.id;
+  const userSlots = schedule.filter(s => s.userId === userId && s.date >= todayStr);
+  const nextSlot = userSlots.sort((a, b) => a.date.localeCompare(b.date))[0];
+  
+  const banner = document.getElementById('daily-info-countdown-card');
+  const creatorCard = document.getElementById('daily-info-creator-card');
+  const timerBadge = document.getElementById('daily-info-timer-badge');
+  
+  if (!nextSlot) {
+    // Intern has no assigned turn
+    document.getElementById('countdown-status-title').textContent = "No Assigned Roster Slot";
+    document.getElementById('countdown-timer-text').textContent = "You are not scheduled to post updates. Reach out to management to request a slot.";
+    banner.style.backgroundColor = 'var(--text-secondary)';
+    creatorCard.classList.add('hidden');
+    timerBadge.classList.add('hidden');
+    return;
+  }
+  
+  if (nextSlot.date === todayStr) {
+    // Today is their day!
+    document.getElementById('countdown-status-title').textContent = "🎉 It's Your Turn Today!";
+    document.getElementById('countdown-timer-text').textContent = "Share your daily insights, text updates, or upload a 30s video now.";
+    banner.style.backgroundColor = 'var(--accent-color)';
+    creatorCard.classList.remove('hidden');
+    timerBadge.classList.remove('hidden');
+    timerBadge.textContent = "YOUR TURN";
+    
+    // Trigger desktop notification and tone chime once
+    if (!dailyInfoAlertTriggered) {
+      playAlertSound();
+      showDesktopNotification();
+      dailyInfoAlertTriggered = true;
+    }
+    return;
+  }
+  
+  // Future date, show countdown
+  dailyInfoAlertTriggered = false; // Reset trigger
+  creatorCard.classList.add('hidden');
+  banner.style.backgroundColor = '#4b5563'; // Gray color
+  
+  // Setup target time (midnight local time on their assigned day)
+  const targetDateStr = nextSlot.date + 'T00:00:00';
+  const targetTime = new Date(targetDateStr);
+  
+  timerBadge.classList.remove('hidden');
+  
+  const updateTimer = () => {
+    const diff = targetTime.getTime() - Date.now();
+    
+    if (diff <= 0) {
+      // Transitioned to today! Reload view to open posting section
+      clearInterval(dailyInfoTimerInterval);
+      loadInternDailyInfo();
+      return;
+    }
+    
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+    const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+    
+    const displayTimeStr = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    
+    document.getElementById('countdown-status-title').textContent = `Your Turn: ${nextSlot.date}`;
+    document.getElementById('countdown-timer-text').textContent = `Countdown until your rotation day starts: ${displayTimeStr}`;
+    
+    // Update badge: formatted as HH:MM:SS
+    const formattedHours = String(hours + (days * 24)).padStart(2, '0');
+    const formattedMins = String(minutes).padStart(2, '0');
+    const formattedSecs = String(seconds).padStart(2, '0');
+    timerBadge.textContent = `${formattedHours}:${formattedMins}:${formattedSecs}`;
+  };
+  
+  updateTimer();
+  dailyInfoTimerInterval = setInterval(updateTimer, 1000);
+}
+
+// Relative time helper
+function formatTimeAgo(date) {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  let interval = Math.floor(seconds / 31536000);
+  if (interval >= 1) return interval + "y ago";
+  interval = Math.floor(seconds / 2592000);
+  if (interval >= 1) return interval + "mo ago";
+  interval = Math.floor(seconds / 86400);
+  if (interval >= 1) return interval + "d ago";
+  interval = Math.floor(seconds / 3600);
+  if (interval >= 1) return interval + "h ago";
+  interval = Math.floor(seconds / 60);
+  if (interval >= 1) return interval + "m ago";
+  return "just now";
 }

@@ -5,7 +5,8 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Helpers
@@ -681,6 +682,269 @@ app.delete('/api/admin/tasks/delete/:id', async (req, res) => {
     tasks.splice(index, 1);
     await db.saveCollection('tasks', tasks);
     res.json({ success: true, message: 'Task deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// DAILY INFORMATION FEATURE APIs
+// ==========================================
+
+async function getOrGenerateSchedule(daysCount = 14) {
+  const users = await db.getCollection('users');
+  const interns = users.filter(u => u.role === 'intern').sort((a, b) => {
+    const aId = a._id ? a._id.toString() : a.id;
+    const bId = b._id ? b._id.toString() : b.id;
+    return aId.localeCompare(bId);
+  });
+  
+  if (interns.length === 0) return { schedule: [], interns: [] };
+
+  const daily_info_schedule = await db.getCollection('daily_info_schedule') || [];
+  const schedule = [];
+  const now = new Date();
+  let scheduleModified = false;
+
+  for (let i = 0; i < daysCount; i++) {
+    const d = new Date(now.getTime() + (i * 24 * 60 * 60 * 1000));
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    const dateStr = localDate.toISOString().split('T')[0];
+
+    let existing = daily_info_schedule.find(s => s.date === dateStr);
+    if (!existing) {
+      // Find the last assigned date prior to this date
+      const sortedPrevSchedules = daily_info_schedule
+        .filter(s => s.date < dateStr)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      let nextInternIndex = 0;
+      if (sortedPrevSchedules.length > 0) {
+        const lastAssignedUserId = sortedPrevSchedules[0].userId;
+        const lastInternIndex = interns.findIndex(it => (it._id ? it._id.toString() : it.id) === lastAssignedUserId);
+        if (lastInternIndex !== -1) {
+          nextInternIndex = (lastInternIndex + 1) % interns.length;
+        }
+      } else {
+        const justAdded = schedule.filter(s => s.date < dateStr).sort((a, b) => b.date.localeCompare(a.date));
+        if (justAdded.length > 0) {
+          const lastAssignedUserId = justAdded[0].userId;
+          const lastInternIndex = interns.findIndex(it => (it._id ? it._id.toString() : it.id) === lastAssignedUserId);
+          if (lastInternIndex !== -1) {
+            nextInternIndex = (lastInternIndex + 1) % interns.length;
+          }
+        }
+      }
+
+      const assignedIntern = interns[nextInternIndex];
+      existing = {
+        id: `sch-${dateStr}`,
+        date: dateStr,
+        userId: assignedIntern._id ? assignedIntern._id.toString() : assignedIntern.id
+      };
+      daily_info_schedule.push(existing);
+      scheduleModified = true;
+    }
+    
+    // Resolve intern details for display
+    const internUser = interns.find(it => (it._id ? it._id.toString() : it.id) === existing.userId);
+    schedule.push({
+      ...existing,
+      internName: internUser ? internUser.name : 'Unknown Intern',
+      internDomain: internUser ? internUser.domain : 'N/A'
+    });
+  }
+
+  if (scheduleModified) {
+    await db.saveCollection('daily_info_schedule', daily_info_schedule);
+  }
+
+  return {
+    schedule,
+    interns: interns.map(it => ({
+      id: it._id ? it._id.toString() : it.id,
+      name: it.name,
+      domain: it.domain
+    }))
+  };
+}
+
+// Get Schedule
+app.get('/api/daily-info/schedule', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 14;
+    const data = await getOrGenerateSchedule(days);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Edit Schedule (Admin only)
+app.post('/api/daily-info/schedule/edit', async (req, res) => {
+  try {
+    const { date, userId } = req.body;
+    if (!date || !userId) {
+      return res.status(400).json({ error: 'Date and User ID are required.' });
+    }
+    
+    const daily_info_schedule = await db.getCollection('daily_info_schedule') || [];
+    const index = daily_info_schedule.findIndex(s => s.date === date);
+    
+    if (index !== -1) {
+      daily_info_schedule[index].userId = userId;
+    } else {
+      daily_info_schedule.push({
+        id: `sch-${date}`,
+        date,
+        userId
+      });
+    }
+    
+    await db.saveCollection('daily_info_schedule', daily_info_schedule);
+    res.json({ success: true, message: 'Schedule updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Feed (Active posts in last 24 hours)
+app.get('/api/daily-info/feed', async (req, res) => {
+  try {
+    const posts = await db.getCollection('daily_info_posts') || [];
+    const now = Date.now();
+    
+    // Filter posts that are less than 24 hours old
+    const activePosts = posts.filter(p => {
+      const createdTime = new Date(p.createdAt).getTime();
+      return (now - createdTime) < 24 * 60 * 60 * 1000;
+    });
+    
+    // If some posts expired, we save the active ones back to cleanup DB
+    if (activePosts.length !== posts.length) {
+      await db.saveCollection('daily_info_posts', activePosts);
+    }
+    
+    // Sort newest first
+    activePosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(activePosts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create Post (Allowed only on scheduled day)
+app.post('/api/daily-info/posts', async (req, res) => {
+  try {
+    const { userId, text, mediaUrl, mediaType } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required.' });
+    }
+    
+    // Check schedule for today
+    const today = getTodayDate();
+    const scheduleData = await getOrGenerateSchedule(1);
+    const todaySch = scheduleData.schedule.find(s => s.date === today);
+    
+    if (!todaySch || todaySch.userId !== userId) {
+      return res.status(403).json({ error: "It is not your scheduled day to post daily information." });
+    }
+    
+    const users = await db.getCollection('users');
+    const user = users.find(u => (u._id ? u._id.toString() : u.id) === userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    
+    const posts = await db.getCollection('daily_info_posts') || [];
+    const newPost = {
+      id: `post-${Date.now()}`,
+      userId,
+      username: user.name,
+      userDomain: user.domain || 'Intern',
+      text: text || '',
+      mediaUrl: mediaUrl || '',
+      mediaType: mediaType || 'none',
+      createdAt: new Date().toISOString(),
+      likes: [],
+      comments: []
+    };
+    
+    posts.push(newPost);
+    await db.saveCollection('daily_info_posts', posts);
+    res.status(201).json({ success: true, post: newPost });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Like / Unlike Post
+app.post('/api/daily-info/posts/:postId/like', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required.' });
+    }
+    
+    const posts = await db.getCollection('daily_info_posts') || [];
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+    
+    if (!post.likes) post.likes = [];
+    const likeIndex = post.likes.indexOf(userId);
+    if (likeIndex !== -1) {
+      // Unlike
+      post.likes.splice(likeIndex, 1);
+    } else {
+      // Like
+      post.likes.push(userId);
+    }
+    
+    await db.saveCollection('daily_info_posts', posts);
+    res.json({ success: true, likes: post.likes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add Comment
+app.post('/api/daily-info/posts/:postId/comment', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userId, text } = req.body;
+    if (!userId || !text) {
+      return res.status(400).json({ error: 'User ID and comment text are required.' });
+    }
+    
+    const users = await db.getCollection('users');
+    const user = users.find(u => (u._id ? u._id.toString() : u.id) === userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    
+    const posts = await db.getCollection('daily_info_posts') || [];
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found.' });
+    }
+    
+    const comment = {
+      id: `comment-${Date.now()}`,
+      userId,
+      username: user.name,
+      text,
+      createdAt: new Date().toISOString()
+    };
+    
+    if (!post.comments) post.comments = [];
+    post.comments.push(comment);
+    
+    await db.saveCollection('daily_info_posts', posts);
+    res.json({ success: true, comments: post.comments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

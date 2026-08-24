@@ -122,6 +122,12 @@
               </button>
             </li>
             <li>
+              <button class="sidebar-tab" data-target="intern-daily-info">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="sidebar-tab-label">Daily Info <span id="daily-info-timer-badge" class="badge hidden" style="background-color: var(--status-danger); color: white; border-radius: 4px; padding: 2px 6px; font-size: 9px; margin-left: 6px; font-weight: bold;">00:00:00</span></span>
+              </button>
+            </li>
+            <li>
               <button class="sidebar-tab" data-target="intern-settings">
                 <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 <span class="sidebar-tab-label">Settings</span>
@@ -322,6 +328,77 @@
             </div>
           </div>
 
+          <!-- DAILY INFORMATION TAB (INTERN) -->
+          <div id="intern-daily-info" class="intern-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Daily Information Feed</h1>
+              <p>Fostering inter-domain knowledge sharing. Designated interns post updates, short videos, or insights once a day.</p>
+            </div>
+
+            <!-- Countdown Banner / Alert -->
+            <div class="grid-card" id="daily-info-countdown-card" style="background-color: var(--accent-color); color: white; margin-bottom: 20px;">
+              <div class="card-body" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span style="font-size: 24px;">⏰</span>
+                  <div>
+                    <h3 style="margin: 0; font-weight: 700; color: white;" id="countdown-status-title">Loading Speaker Schedule...</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;" id="countdown-timer-text">Initializing countdown...</p>
+                  </div>
+                </div>
+                <div id="countdown-alert-action" style="display: none;">
+                  <button class="btn" style="background-color: white; color: var(--accent-color); border: none; padding: 6px 12px; font-weight: 600;" onclick="document.getElementById('daily-info-media').click()">Upload Post</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Post Creator (Only visible on assigned day) -->
+            <div class="grid-card hidden" id="daily-info-creator-card" style="margin-bottom: 24px; border: 2px solid var(--accent-color);">
+              <div class="card-header" style="background-color: rgba(99, 102, 241, 0.05); padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+                <h3 style="margin: 0; font-weight: 700; display: flex; align-items: center; gap: 8px; font-size: 16px;">
+                  <span style="color: var(--accent-color);">✍️</span> Create Daily Update
+                </h3>
+              </div>
+              <div class="card-body" style="padding: 16px;">
+                <form id="daily-info-post-form">
+                  <div class="form-group">
+                    <label for="daily-info-text" style="font-weight: 600; margin-bottom: 8px; display: block;">What would you like to share with Skynora today? (Domain updates, insights, tips...)</label>
+                    <textarea id="daily-info-text" placeholder="Share knowledge, updates, or tips..." rows="3" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); font-family: inherit; background-color: var(--input-bg); color: var(--text-primary);"></textarea>
+                  </div>
+                  
+                  <div class="form-group" style="margin-top: 12px;">
+                    <label style="font-weight: 600; margin-bottom: 4px; display: block;">Attach Media (Photo or Video under 30 seconds)</label>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                      <input type="file" id="daily-info-media" accept="image/*,video/*" style="display: none;">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('daily-info-media').click()">Choose File</button>
+                      <span id="daily-info-media-filename" style="font-size: 13px; color: var(--text-secondary);">No file chosen</span>
+                      <button type="button" id="clear-media-btn" class="btn btn-sm hidden" style="color: var(--status-danger); border-color: var(--status-danger); padding: 2px 6px;">Remove</button>
+                    </div>
+                  </div>
+
+                  <!-- Media Preview -->
+                  <div id="media-preview-container" class="hidden" style="margin-top: 12px; border-radius: 8px; overflow: hidden; max-width: 400px; border: 1px solid var(--border-color); padding: 4px; background-color: rgba(0,0,0,0.02);">
+                    <!-- preview will be injected here -->
+                  </div>
+
+                  <div style="margin-top: 16px; text-align: right;">
+                    <button type="submit" class="btn btn-primary" id="submit-daily-info-btn">Post to Feed</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Feed Section -->
+            <div style="max-width: 600px; margin: 0 auto;">
+              <h2 style="margin-bottom: 16px; font-weight: 700; font-size: 18px;">Knowledge Feed (Last 24 Hours)</h2>
+              <div id="daily-info-feed-list">
+                <!-- Posts dynamic insertion -->
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                  Loading updates...
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </section>
@@ -382,6 +459,12 @@
               <button class="sidebar-tab" data-target="admin-history">
                 <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <span class="sidebar-tab-label">History</span>
+              </button>
+            </li>
+            <li>
+              <button class="sidebar-tab" data-target="admin-daily-info">
+                <svg class="sidebar-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="sidebar-tab-label">Daily Info</span>
               </button>
             </li>
             <li>
@@ -887,6 +970,79 @@
                     <button type="submit" class="btn btn-primary btn-sm">Update Password</button>
                   </form>
                 </section>
+              </div>
+            </div>
+          </div>
+
+          <!-- DAILY INFORMATION TAB (ADMIN) -->
+          <div id="admin-daily-info" class="admin-tab-content hidden">
+            <div class="section-title-row">
+              <h1>Daily Information Portal</h1>
+              <p>Track the daily speaker rotation, update the schedule, and view the inter-domain knowledge feed.</p>
+            </div>
+
+            <div class="form-grid" style="grid-template-columns: 1fr 1.2fr; gap: 24px; align-items: start;">
+              <!-- Left side: Schedule & Roster -->
+              <div class="grid-card">
+                <div class="card-header">
+                  <h2>Speaker Rotation Schedule</h2>
+                </div>
+                <div class="card-body">
+                  <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Review the roster of interns assigned to share updates. Click <strong>Edit</strong> on any slot to change the speaker.
+                  </p>
+
+                  <div class="overflow-x">
+                    <table class="data-table" style="font-size: 13px;">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Scheduled Intern</th>
+                          <th>Domain</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="admin-daily-info-schedule-body">
+                        <!-- Filled dynamically -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right side: Knowledge Feed -->
+              <div>
+                <h2 style="margin-bottom: 16px; font-weight: 700; font-size: 18px;">Active Daily Information Posts</h2>
+                <div id="admin-daily-info-feed-list">
+                  <!-- Active posts list -->
+                  <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                    Loading updates...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edit Schedule Dialog Modal -->
+            <div id="edit-schedule-modal" class="modal hidden" style="display: none; align-items: center; justify-content: center; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+              <div class="modal-content" style="background-color: var(--card-bg); padding: 24px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: var(--shadow-lg);">
+                <h3 style="margin-top: 0; margin-bottom: 16px; font-weight: 700;">Modify Roster Assignment</h3>
+                <form id="edit-schedule-form">
+                  <input type="hidden" id="edit-schedule-date">
+                  <div class="form-group">
+                    <label>Selected Date</label>
+                    <input type="text" id="edit-schedule-date-display" disabled style="background-color: var(--input-bg);">
+                  </div>
+                  <div class="form-group" style="margin-top: 12px;">
+                    <label for="edit-schedule-intern-select">Assign Intern</label>
+                    <select id="edit-schedule-intern-select" required>
+                      <!-- Intern options -->
+                    </select>
+                  </div>
+                  <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="close-schedule-modal-btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Update Assignment</button>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
