@@ -706,6 +706,28 @@ async function getOrGenerateSchedule(daysCount = 14) {
   const now = new Date();
   let scheduleModified = false;
 
+  const todayStr = getTodayDate();
+  const upcomingSchedules = daily_info_schedule.filter(s => s.date >= todayStr);
+  const scheduledUserIds = new Set(upcomingSchedules.map(s => s.userId));
+  const activeInternIds = new Set(interns.map(it => (it._id ? it._id.toString() : it.id)));
+
+  // Check if any active intern is not scheduled
+  const hasUnscheduledIntern = interns.some(it => {
+    const itId = it._id ? it._id.toString() : it.id;
+    return !scheduledUserIds.has(itId);
+  });
+
+  // Check if any scheduled slot is for a deleted/removed intern
+  const hasRemovedIntern = upcomingSchedules.some(s => !activeInternIds.has(s.userId));
+
+  if (hasUnscheduledIntern || hasRemovedIntern) {
+    // Clear out future schedules that are not manual overrides to re-balance slots
+    const newSchedules = daily_info_schedule.filter(s => s.date <= todayStr || s.isOverride === true);
+    daily_info_schedule.length = 0;
+    daily_info_schedule.push(...newSchedules);
+    scheduleModified = true;
+  }
+
   for (let i = 0; i < daysCount; i++) {
     const d = new Date(now.getTime() + (i * 24 * 60 * 60 * 1000));
     const offset = d.getTimezoneOffset();
@@ -800,15 +822,18 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
       if (duplicateIndex !== -1) {
         // Swap their slots so oldUserId takes the new user's original slot
         daily_info_schedule[duplicateIndex].userId = oldUserId;
+        daily_info_schedule[duplicateIndex].isOverride = true;
       }
       
-      // Assign new user to the target date
+      // Assign new user to the target date and mark as override
       daily_info_schedule[index].userId = userId;
+      daily_info_schedule[index].isOverride = true;
     } else {
       daily_info_schedule.push({
         id: `sch-${date}`,
         date,
-        userId
+        userId,
+        isOverride: true
       });
     }
     
