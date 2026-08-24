@@ -1962,7 +1962,7 @@ function playAlertSound() {
 function showDesktopNotification() {
   if (Notification.permission === 'granted') {
     new Notification("Skynora Attendance Portal", {
-      body: "⏰ It's your scheduled turn to share Daily Information updates today!",
+      body: "It's your scheduled turn to share Daily Information updates today!",
       icon: "https://img.icons8.com/color/192/000000/attendance.png"
     });
   }
@@ -2180,7 +2180,7 @@ function renderDailyInfoFeed(posts, elementId) {
   if (posts.length === 0) {
     container.innerHTML = `
       <div class="grid-card" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-        <p style="font-size: 24px; margin-bottom: 8px;">📢</p>
+        <svg style="width: 32px; height: 32px; color: var(--text-secondary); margin-bottom: 12px; display: inline-block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
         <p style="font-weight: 600; margin: 0;">No active posts in the last 24 hours.</p>
         <p style="font-size: 13px; opacity: 0.8; margin-top: 4px;">Updates expire automatically after 24 hours.</p>
       </div>
@@ -2433,7 +2433,7 @@ function startDailyInfoCountdown(schedule) {
   
   if (nextSlot.date === todayStr) {
     // Today is their day!
-    document.getElementById('countdown-status-title').textContent = "🎉 It's Your Turn Today!";
+    document.getElementById('countdown-status-title').textContent = "It's Your Turn Today!";
     document.getElementById('countdown-timer-text').textContent = "Share your daily insights, text updates, or upload a 30s video now.";
     banner.style.backgroundColor = 'var(--accent-color)';
     creatorCard.classList.remove('hidden');
