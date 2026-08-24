@@ -2637,27 +2637,36 @@ function updateAppAvatars() {
   const prefix = currentUser.role === 'admin' ? 'admin' : 'intern';
   
   const navAvatar = document.getElementById(`${prefix}-nav-avatar`);
+  const navPlaceholder = document.getElementById(`${prefix}-nav-avatar-placeholder`);
   const settingsAvatar = document.getElementById(`${prefix}-settings-avatar`);
-  const placeholder = document.getElementById(`${prefix}-settings-avatar-placeholder`);
+  const settingsPlaceholder = document.getElementById(`${prefix}-settings-avatar-placeholder`);
   
   if (photo) {
     if (navAvatar) {
       navAvatar.src = photo;
       navAvatar.style.display = 'block';
     }
+    if (navPlaceholder) {
+      navPlaceholder.style.display = 'none';
+    }
     if (settingsAvatar) {
       settingsAvatar.src = photo;
       settingsAvatar.style.display = 'block';
     }
-    if (placeholder) {
-      placeholder.style.display = 'none';
+    if (settingsPlaceholder) {
+      settingsPlaceholder.style.display = 'none';
     }
   } else {
+    const initial = currentUser.name ? currentUser.name.charAt(0).toUpperCase() : '?';
     if (navAvatar) navAvatar.style.display = 'none';
+    if (navPlaceholder) {
+      navPlaceholder.style.display = 'block';
+      navPlaceholder.textContent = initial;
+    }
     if (settingsAvatar) settingsAvatar.style.display = 'none';
-    if (placeholder) {
-      placeholder.style.display = 'flex';
-      placeholder.textContent = currentUser.name.charAt(0).toUpperCase();
+    if (settingsPlaceholder) {
+      settingsPlaceholder.style.display = 'flex';
+      settingsPlaceholder.textContent = initial;
     }
   }
 }

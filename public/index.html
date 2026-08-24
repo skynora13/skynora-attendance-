@@ -87,7 +87,10 @@
           <span class="badge" id="intern-domain-badge">Web Dev</span>
         </div>
         <div class="nav-user" style="display: flex; align-items: center; gap: 10px;">
-          <img id="intern-nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); display: none;">
+          <div class="nav-avatar-container" style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background-color: var(--accent-color); color: white; font-weight: bold; font-size: 14px;">
+            <img id="intern-nav-avatar" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <span id="intern-nav-avatar-placeholder">U</span>
+          </div>
           <span id="intern-name-display" class="user-name">Loading...</span>
           <button id="logout-btn-intern" class="btn btn-secondary btn-sm">Sign Out</button>
         </div>
@@ -435,7 +438,10 @@
           <span class="badge badge-admin">Admin Portal</span>
         </div>
         <div class="nav-user" style="display: flex; align-items: center; gap: 10px;">
-          <img id="admin-nav-avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); display: none;">
+          <div class="nav-avatar-container" style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; background-color: var(--accent-color); color: white; font-weight: bold; font-size: 14px;">
+            <img id="admin-nav-avatar" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            <span id="admin-nav-avatar-placeholder">A</span>
+          </div>
           <span class="user-name">Management</span>
           <button id="logout-btn-admin" class="btn btn-secondary btn-sm">Sign Out</button>
         </div>
