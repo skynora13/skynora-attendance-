@@ -708,7 +708,7 @@ async function getOrGenerateSchedule(daysCount = 14) {
 
   const todayStr = getTodayDate();
   const upcomingSchedules = daily_info_schedule.filter(s => s.date >= todayStr);
-  const scheduledUserIds = new Set(upcomingSchedules.map(s => s.userId));
+  const scheduledUserIds = new Set(upcomingSchedules.map(s => s.userId ? s.userId.toString() : ''));
   const activeInternIds = new Set(interns.map(it => (it._id ? it._id.toString() : it.id)));
 
   // Check if any active intern is not scheduled
@@ -718,7 +718,10 @@ async function getOrGenerateSchedule(daysCount = 14) {
   });
 
   // Check if any scheduled slot is for a deleted/removed intern
-  const hasRemovedIntern = upcomingSchedules.some(s => !activeInternIds.has(s.userId));
+  const hasRemovedIntern = upcomingSchedules.some(s => {
+    const slotUserId = s.userId ? s.userId.toString() : '';
+    return !activeInternIds.has(slotUserId);
+  });
 
   if (hasUnscheduledIntern || hasRemovedIntern) {
     // Clear out future schedules that are not manual overrides to re-balance slots
@@ -743,7 +746,7 @@ async function getOrGenerateSchedule(daysCount = 14) {
 
       let nextInternIndex = 0;
       if (sortedPrevSchedules.length > 0) {
-        const lastAssignedUserId = sortedPrevSchedules[0].userId;
+        const lastAssignedUserId = sortedPrevSchedules[0].userId ? sortedPrevSchedules[0].userId.toString() : '';
         const lastInternIndex = interns.findIndex(it => (it._id ? it._id.toString() : it.id) === lastAssignedUserId);
         if (lastInternIndex !== -1) {
           nextInternIndex = (lastInternIndex + 1) % interns.length;
@@ -751,7 +754,7 @@ async function getOrGenerateSchedule(daysCount = 14) {
       } else {
         const justAdded = schedule.filter(s => s.date < dateStr).sort((a, b) => b.date.localeCompare(a.date));
         if (justAdded.length > 0) {
-          const lastAssignedUserId = justAdded[0].userId;
+          const lastAssignedUserId = justAdded[0].userId ? justAdded[0].userId.toString() : '';
           const lastInternIndex = interns.findIndex(it => (it._id ? it._id.toString() : it.id) === lastAssignedUserId);
           if (lastInternIndex !== -1) {
             nextInternIndex = (lastInternIndex + 1) % interns.length;
@@ -770,7 +773,11 @@ async function getOrGenerateSchedule(daysCount = 14) {
     }
     
     // Resolve intern details for display
-    const internUser = interns.find(it => (it._id ? it._id.toString() : it.id) === existing.userId);
+    const internUser = interns.find(it => {
+      const itId = it._id ? it._id.toString() : it.id;
+      const slotUserId = existing.userId ? existing.userId.toString() : '';
+      return itId === slotUserId;
+    });
     schedule.push({
       ...existing,
       internName: internUser ? internUser.name : 'Unknown Intern',
@@ -815,10 +822,14 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
     const index = daily_info_schedule.findIndex(s => s.date === date);
     
     if (index !== -1) {
-      const oldUserId = daily_info_schedule[index].userId;
+      const oldUserId = daily_info_schedule[index].userId ? daily_info_schedule[index].userId.toString() : '';
+      const newUserIdStr = userId ? userId.toString() : '';
       
       // Swap: Find if the new user (userId) is already scheduled on a different date
-      const duplicateIndex = daily_info_schedule.findIndex(s => s.date !== date && s.userId === userId);
+      const duplicateIndex = daily_info_schedule.findIndex(s => {
+        const slotUserId = s.userId ? s.userId.toString() : '';
+        return s.date !== date && slotUserId === newUserIdStr;
+      });
       if (duplicateIndex !== -1) {
         // Swap their slots so oldUserId takes the new user's original slot
         daily_info_schedule[duplicateIndex].userId = oldUserId;
@@ -826,13 +837,13 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
       }
       
       // Assign new user to the target date and mark as override
-      daily_info_schedule[index].userId = userId;
+      daily_info_schedule[index].userId = newUserIdStr;
       daily_info_schedule[index].isOverride = true;
     } else {
       daily_info_schedule.push({
         id: `sch-${date}`,
         date,
-        userId,
+        userId: userId ? userId.toString() : '',
         isOverride: true
       });
     }
