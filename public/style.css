@@ -1138,61 +1138,67 @@ body.dark-theme .tear-off-middle::before {
   background-color: var(--bg-secondary);
 }
 
-/* Nav Sky Video Background - Global for all screen sizes including laptop */
+/* Nav Sky Video Background */
 .nav-sky-video {
-  display: block;
-  opacity: 0.85;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 1;
-  pointer-events: none;
+  display: none;
 }
 
-.nav-bar {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(to right, #0284c7, #38bdf8) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-
-.nav-bar > *:not(.nav-sky-video) {
-  position: relative;
-  z-index: 2;
-}
-
-.nav-bar .logo {
-  color: white !important;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-
-.nav-bar .logo::before {
-  color: white !important;
-}
-
-.nav-bar .user-name {
-  color: white !important;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-
-.nav-bar .menu-toggle-btn {
-  color: white !important;
-}
-
-.nav-bar .badge {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.nav-bar .btn-secondary {
-  background-color: rgba(255, 255, 255, 0.25) !important;
-  color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+@media (max-width: 768px) {
+  .nav-sky-video {
+    display: block;
+    opacity: 0.85;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    pointer-events: none;
+  }
+  
+  .nav-bar {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(to right, #0284c7, #38bdf8) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  .nav-bar > *:not(.nav-sky-video) {
+    position: relative;
+    z-index: 2;
+  }
+  
+  .nav-bar .logo {
+    color: white !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  }
+  
+  .nav-bar .logo::before {
+    color: white !important;
+  }
+  
+  .nav-bar .user-name {
+    color: white !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  }
+  
+  .nav-bar .menu-toggle-btn {
+    color: white !important;
+  }
+  
+  .nav-bar .badge {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  
+  .nav-bar .btn-secondary {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
 }
