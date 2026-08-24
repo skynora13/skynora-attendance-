@@ -524,6 +524,35 @@ document.getElementById('check-in-btn').addEventListener('click', async () => {
 });
 
 // Check out button trigger
+document.getElementById('daily-report-input').addEventListener('keydown', (e) => {
+  const allowedKeys = [
+    'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+    'Tab', 'Home', 'End', 'Control', 'Meta'
+  ];
+  if (allowedKeys.includes(e.key) || e.ctrlKey || e.metaKey) {
+    return;
+  }
+
+  const val = e.target.value;
+  const words = val.trim().split(/\s+/).filter(w => w.length > 0);
+
+  if (words.length >= 40) {
+    // Prevent typing a space which starts a new word
+    if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+      e.preventDefault();
+      showToast('Word limit reached. Cannot type more than 40 words.');
+      return;
+    }
+    
+    // Prevent typing characters if the text ends in a space (which starts a 41st word)
+    const lastCharIsSpace = /\s/.test(val.charAt(val.length - 1));
+    if (lastCharIsSpace && val.length > 0) {
+      e.preventDefault();
+      showToast('Word limit reached. Cannot type more than 40 words.');
+    }
+  }
+});
+
 document.getElementById('daily-report-input').addEventListener('input', (e) => {
   let val = e.target.value;
 
