@@ -311,6 +311,31 @@ app.post('/api/user/profile-photo', async (req, res) => {
   }
 });
 
+// User: Get Profile Details
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    const users = await db.getCollection('users') || [];
+    const user = users.find(u => {
+      const uId = u._id ? u._id.toString() : u.id;
+      return uId === userId.toString();
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { password: _, ...userSafe } = user;
+    res.json({ user: userSafe });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin: Get Interns and their summary
 app.get('/api/admin/interns', async (req, res) => {
   const users = (await db.getCollection('users')).filter(u => u.role === 'intern');

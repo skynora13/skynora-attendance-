@@ -20,6 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
     setupDashboard();
+    
+    // Background sync user profile details (like profile photo) from database
+    const userId = currentUser._id || currentUser.id;
+    fetch(`/api/user/profile?userId=${userId}`)
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error();
+      })
+      .then(data => {
+        currentUser = data.user;
+        localStorage.setItem('skynora_user', JSON.stringify(currentUser));
+        updateAppAvatars();
+      })
+      .catch(() => {
+        // Silent catch for network disconnects
+      });
   }
 
   // Handle Domain selector display and validation on login role selection
