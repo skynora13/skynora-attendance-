@@ -338,9 +338,12 @@ app.get('/api/user/profile', async (req, res) => {
 
 // Admin: Get Interns and their summary
 app.get('/api/admin/interns', async (req, res) => {
-  const users = (await db.getCollection('users')).filter(u => u.role === 'intern');
-  const attendanceList = await db.getCollection('attendance');
-  const tasks = await db.getCollection('tasks');
+  const [allUsers, attendanceList, tasks] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('attendance'),
+    db.getCollection('tasks')
+  ]);
+  const users = allUsers.filter(u => u.role === 'intern');
 
   const internsSummary = users.map(user => {
     const uId = user._id ? user._id.toString() : user.id;
@@ -365,10 +368,12 @@ app.get('/api/admin/interns', async (req, res) => {
 
 // Admin: Full Dashboard details
 app.get('/api/admin/dashboard', async (req, res) => {
-  const users = await db.getCollection('users');
-  const attendance = await db.getCollection('attendance');
-  const leaves = await db.getCollection('leaves');
-  const tasks = await db.getCollection('tasks');
+  const [users, attendance, leaves, tasks] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('attendance'),
+    db.getCollection('leaves'),
+    db.getCollection('tasks')
+  ]);
 
   const interns = users.filter(u => u.role === 'intern');
 
@@ -511,10 +516,13 @@ app.post('/api/admin/leaves/review', async (req, res) => {
 
 // Admin: Monthly Reports
 app.get('/api/admin/monthly-reports', async (req, res) => {
-  const users = (await db.getCollection('users')).filter(u => u.role === 'intern');
-  const attendance = await db.getCollection('attendance');
-  const tasks = await db.getCollection('tasks');
-  const leaves = await db.getCollection('leaves');
+  const [allUsers, attendance, tasks, leaves] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('attendance'),
+    db.getCollection('tasks'),
+    db.getCollection('leaves')
+  ]);
+  const users = allUsers.filter(u => u.role === 'intern');
 
   // Aggregate monthly report metrics for each intern
   const reports = users.map(user => {

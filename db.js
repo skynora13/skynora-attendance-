@@ -117,22 +117,34 @@ if (MONGODB_URI) {
   client = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 3000, connectTimeoutMS: 3000 });
 }
 
+let connectionPromise = null;
+
 async function connectDb() {
   if (!useMongo) return null;
   if (mongoDb) return mongoDb;
-  try {
-    await client.connect();
-    mongoDb = client.db();
-    console.log('Connected successfully to MongoDB Cloud');
-    
-    // Seed default data if collections do not exist
-    await seedMongoDefaults();
-    return mongoDb;
-  } catch (err) {
-    console.error('Failed to connect to MongoDB, falling back to local file:', err);
-    useMongo = false;
-    return null;
+  
+  if (connectionPromise) {
+    return connectionPromise;
   }
+  
+  connectionPromise = (async () => {
+    try {
+      await client.connect();
+      mongoDb = client.db();
+      console.log('Connected successfully to MongoDB Cloud');
+      
+      // Seed default data if collections do not exist
+      await seedMongoDefaults();
+      return mongoDb;
+    } catch (err) {
+      console.error('Failed to connect to MongoDB, falling back to local file:', err);
+      // Reset connection promise so a retry can occur on next request
+      connectionPromise = null;
+      return null;
+    }
+  })();
+  
+  return connectionPromise;
 }
 
 async function seedMongoDefaults() {
