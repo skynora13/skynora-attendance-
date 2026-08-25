@@ -163,47 +163,99 @@ async function seedMongoDefaults() {
   }
 }
 
-// Initialize connection if using Mongo
+// Local cache for collections
+const memoryCache = {};
+let isCacheLoaded = false;
+let cachePromise = null;
+
+async function loadCache() {
+  if (isCacheLoaded) return;
+  if (cachePromise) return cachePromise;
+
+  cachePromise = (async () => {
+    try {
+      const collections = ['users', 'attendance', 'leaves', 'tasks', 'daily_info_schedule', 'daily_info_posts'];
+      if (useMongo) {
+        const dbInstance = await connectDb();
+        if (dbInstance) {
+          for (const name of collections) {
+            memoryCache[name] = await dbInstance.collection(name).find({}).toArray();
+          }
+          isCacheLoaded = true;
+          console.log('Memory cache successfully populated from MongoDB');
+          return;
+        }
+      }
+      // Fallback to local files
+      const localDb = readDb();
+      for (const name of collections) {
+        memoryCache[name] = localDb[name] || [];
+      }
+      isCacheLoaded = true;
+      console.log('Memory cache successfully populated from local database file');
+    } catch (err) {
+      console.error('Failed to load memory cache:', err);
+    }
+  })();
+
+  return cachePromise;
+}
+
+// Initialize connection and cache
 if (useMongo) {
-  connectDb().catch(err => console.error("Initial DB connection failed:", err));
+  connectDb()
+    .then(() => loadCache())
+    .catch(err => {
+      console.error("Initial DB connection failed:", err);
+      loadCache();
+    });
+} else {
+  loadCache();
 }
 
 module.exports = {
   getCollection: async (name) => {
-    if (useMongo) {
-      const dbInstance = await connectDb();
-      if (dbInstance) {
-        return await dbInstance.collection(name).find({}).toArray();
-      }
-    }
-    const db = readDb();
-    return db[name] || [];
+    await loadCache();
+    // Return a copy to prevent external mutation issues
+    return JSON.parse(JSON.stringify(memoryCache[name] || []));
   },
   
   saveCollection: async (name, items) => {
+    await loadCache();
+    // Update cache immediately
+    memoryCache[name] = JSON.parse(JSON.stringify(items));
+    
+    // Write to Mongo in the background
     if (useMongo) {
       const dbInstance = await connectDb();
       if (dbInstance) {
-        await dbInstance.collection(name).deleteMany({});
-        if (items.length > 0) {
-          await dbInstance.collection(name).insertMany(items);
-        }
-        return;
+        dbInstance.collection(name).deleteMany({}).then(() => {
+          if (items.length > 0) {
+            dbInstance.collection(name).insertMany(items);
+          }
+        }).catch(err => console.error(`Error saving collection ${name} to Mongo:`, err));
       }
     }
+    // Update local file backup
     const db = readDb();
     db[name] = items;
     writeDb(db);
   },
   
   insert: async (name, item) => {
+    await loadCache();
+    if (!memoryCache[name]) memoryCache[name] = [];
+    memoryCache[name].push(JSON.parse(JSON.stringify(item)));
+    
+    // Write to Mongo in the background
     if (useMongo) {
       const dbInstance = await connectDb();
       if (dbInstance) {
-        await dbInstance.collection(name).insertOne({ ...item });
-        return item;
+        dbInstance.collection(name).insertOne({ ...item })
+          .catch(err => console.error(`Error inserting to Mongo in collection ${name}:`, err));
       }
     }
+    // Update local file backup
     const db = readDb();
     if (!db[name]) db[name] = [];
     db[name].push(item);
@@ -212,24 +264,32 @@ module.exports = {
   },
   
   update: async (name, id, updateData) => {
+    await loadCache();
+    const index = memoryCache[name].findIndex(item => item.id === id);
+    let updatedItem = null;
+    if (index !== -1) {
+      memoryCache[name][index] = { ...memoryCache[name][index], ...updateData };
+      updatedItem = JSON.parse(JSON.stringify(memoryCache[name][index]));
+    }
+    
+    // Write to Mongo in the background
     if (useMongo) {
       const dbInstance = await connectDb();
       if (dbInstance) {
-        const result = await dbInstance.collection(name).findOneAndUpdate(
+        dbInstance.collection(name).findOneAndUpdate(
           { id: id },
           { $set: updateData },
           { returnDocument: 'after' }
-        );
-        return result;
+        ).catch(err => console.error(`Error updating Mongo in collection ${name}:`, err));
       }
     }
+    // Update local file backup
     const db = readDb();
-    const index = db[name].findIndex(item => item.id === id);
-    if (index !== -1) {
-      db[name][index] = { ...db[name][index], ...updateData };
+    const localIndex = db[name].findIndex(item => item.id === id);
+    if (localIndex !== -1) {
+      db[name][localIndex] = { ...db[name][localIndex], ...updateData };
       writeDb(db);
-      return db[name][index];
     }
-    return null;
+    return updatedItem;
   }
 };
