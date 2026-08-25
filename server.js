@@ -80,7 +80,10 @@ app.post('/api/admin/create-intern', async (req, res) => {
 // Intern: Status
 app.get('/api/intern/status/:userId', async (req, res) => {
   const { userId } = req.params;
-  const users = await db.getCollection('users');
+  const [users, attendanceList] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('attendance')
+  ]);
   const user = users.find(u => {
     const uId1 = u.id;
     const uId2 = u._id ? u._id.toString() : null;
@@ -94,7 +97,6 @@ app.get('/api/intern/status/:userId', async (req, res) => {
   const uId1 = user.id;
   const uId2 = user._id ? user._id.toString() : null;
   const today = getTodayDate();
-  const attendanceList = await db.getCollection('attendance');
   
   const todayRecord = attendanceList.find(a => (a.userId === uId1 || a.userId === uId2) && a.date === today);
   res.json({ todayRecord: todayRecord || null });
@@ -194,7 +196,10 @@ app.post('/api/intern/leave', async (req, res) => {
 // Intern: Get Leaves
 app.get('/api/intern/leaves/:userId', async (req, res) => {
   const { userId } = req.params;
-  const users = await db.getCollection('users');
+  const [users, leaves] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('leaves')
+  ]);
   const user = users.find(u => {
     const uId1 = u.id;
     const uId2 = u._id ? u._id.toString() : null;
@@ -204,7 +209,6 @@ app.get('/api/intern/leaves/:userId', async (req, res) => {
 
   const uId1 = user.id;
   const uId2 = user._id ? user._id.toString() : null;
-  const leaves = await db.getCollection('leaves');
   const userLeaves = leaves.filter(l => l.userId === uId1 || l.userId === uId2).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json({ leaves: userLeaves });
 });
@@ -212,7 +216,10 @@ app.get('/api/intern/leaves/:userId', async (req, res) => {
 // Intern: Get Attendance History
 app.get('/api/intern/attendance/:userId', async (req, res) => {
   const { userId } = req.params;
-  const users = await db.getCollection('users');
+  const [users, attendance] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('attendance')
+  ]);
   const user = users.find(u => {
     const uId1 = u.id;
     const uId2 = u._id ? u._id.toString() : null;
@@ -222,7 +229,6 @@ app.get('/api/intern/attendance/:userId', async (req, res) => {
 
   const uId1 = user.id;
   const uId2 = user._id ? user._id.toString() : null;
-  const attendance = await db.getCollection('attendance');
   const userAttendance = attendance.filter(a => a.userId === uId1 || a.userId === uId2);
   res.json({ attendance: userAttendance });
 });
@@ -230,7 +236,10 @@ app.get('/api/intern/attendance/:userId', async (req, res) => {
 // Intern: Get Tasks
 app.get('/api/intern/tasks/:userId', async (req, res) => {
   const { userId } = req.params;
-  const users = await db.getCollection('users');
+  const [users, tasks] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('tasks')
+  ]);
   const user = users.find(u => {
     const uId1 = u.id;
     const uId2 = u._id ? u._id.toString() : null;
@@ -240,7 +249,6 @@ app.get('/api/intern/tasks/:userId', async (req, res) => {
 
   const uId1 = user.id;
   const uId2 = user._id ? user._id.toString() : null;
-  const tasks = await db.getCollection('tasks');
   const userTasks = tasks.filter(t => t.userId === uId1 || t.userId === uId2).sort((a,b) => new Date(b.assignedAt) - new Date(a.assignedAt));
   res.json({ tasks: userTasks });
 });
