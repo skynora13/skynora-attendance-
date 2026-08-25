@@ -765,7 +765,11 @@ app.delete('/api/admin/tasks/delete/:id', async (req, res) => {
 // ==========================================
 
 async function getOrGenerateSchedule(daysCount = 14) {
-  const users = await db.getCollection('users');
+  const [users, daily_info_schedule_raw] = await Promise.all([
+    db.getCollection('users'),
+    db.getCollection('daily_info_schedule')
+  ]);
+  const daily_info_schedule = daily_info_schedule_raw || [];
   const interns = users.filter(u => u.role === 'intern').sort((a, b) => {
     const aId = a._id ? a._id.toString() : a.id;
     const bId = b._id ? b._id.toString() : b.id;
@@ -774,7 +778,6 @@ async function getOrGenerateSchedule(daysCount = 14) {
   
   if (interns.length === 0) return { schedule: [], interns: [] };
 
-  const daily_info_schedule = await db.getCollection('daily_info_schedule') || [];
   const schedule = [];
   const now = new Date();
   let scheduleModified = false;
@@ -931,7 +934,11 @@ app.post('/api/daily-info/schedule/edit', async (req, res) => {
 // Get Feed (Active posts in last 24 hours) - resolves viewer profiles dynamically
 app.get('/api/daily-info/feed', async (req, res) => {
   try {
-    const posts = await db.getCollection('daily_info_posts') || [];
+    const [postsRaw, users] = await Promise.all([
+      db.getCollection('daily_info_posts'),
+      db.getCollection('users')
+    ]);
+    const posts = postsRaw || [];
     const now = Date.now();
     
     // Filter posts that are less than 24 hours old
@@ -948,8 +955,6 @@ app.get('/api/daily-info/feed', async (req, res) => {
     // Sort newest first
     activePosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
-    // Resolve profilePhoto dynamically from users collection to show in the feed
-    const users = await db.getCollection('users') || [];
     const postsWithAvatars = activePosts.map(p => {
       const user = users.find(u => {
         const uId = u._id ? u._id.toString() : u.id;
