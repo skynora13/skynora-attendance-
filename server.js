@@ -31,6 +31,55 @@ function getTodayDate() {
   return localDate.toISOString().split('T')[0];
 }
 
+function calculateStreak(attendanceRecords) {
+  const dates = [...new Set(attendanceRecords.map(r => r.date))].sort().reverse();
+  if (dates.length === 0) return 0;
+
+  const todayStr = getTodayDate();
+  
+  // Helper to check if a Date is a weekend
+  const isWeekend = (date) => {
+    const day = date.getDay(); // 0 is Sunday, 6 is Saturday
+    return day === 0 || day === 6;
+  };
+
+  // Find yesterday or the last weekday prior to today
+  let yesterday = new Date(todayStr);
+  do {
+    yesterday.setDate(yesterday.getDate() - 1);
+  } while (isWeekend(yesterday));
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const newestDate = dates[0];
+
+  // If newest check-in is not today and not the last weekday
+  if (newestDate !== todayStr && newestDate !== yesterdayStr) {
+    if (isWeekend(new Date(todayStr)) && newestDate === yesterdayStr) {
+      // Keep streak active over weekends if Friday check-in exists
+    } else {
+      return 0;
+    }
+  }
+
+  let streak = 0;
+  let currentDate = new Date(newestDate);
+
+  while (true) {
+    const expectedStr = currentDate.toISOString().split('T')[0];
+    if (dates.includes(expectedStr)) {
+      streak++;
+      // Move to previous weekday (skipping weekends)
+      do {
+        currentDate.setDate(currentDate.getDate() - 1);
+      } while (isWeekend(currentDate));
+    } else {
+      break;
+    }
+  }
+
+  return streak;
+}
+
 // APIs
 // Auth
 app.post('/api/login', async (req, res) => {
@@ -91,7 +140,7 @@ app.get('/api/intern/status/:userId', async (req, res) => {
   });
   
   if (!user) {
-    return res.json({ todayRecord: null });
+    return res.json({ todayRecord: null, streak: 0 });
   }
   
   const uId1 = user.id;
@@ -99,7 +148,12 @@ app.get('/api/intern/status/:userId', async (req, res) => {
   const today = getTodayDate();
   
   const todayRecord = attendanceList.find(a => (a.userId === uId1 || a.userId === uId2) && a.date === today);
-  res.json({ todayRecord: todayRecord || null });
+  
+  // Calculate streak for this specific user
+  const userAttendanceList = attendanceList.filter(a => a.userId === uId1 || a.userId === uId2);
+  const streak = calculateStreak(userAttendanceList);
+  
+  res.json({ todayRecord: todayRecord || null, streak });
 });
 
 // Intern: Check-In
@@ -358,6 +412,7 @@ app.get('/api/admin/interns', async (req, res) => {
     const userAttendance = attendanceList.filter(a => a.userId === uId);
     const totalHours = userAttendance.reduce((sum, curr) => sum + (curr.totalHours || 0), 0);
     const userTasks = tasks.filter(t => t.userId === uId);
+    const streak = calculateStreak(userAttendance);
     
     return {
       id: uId,
@@ -367,7 +422,8 @@ app.get('/api/admin/interns', async (req, res) => {
       totalHours: parseFloat(totalHours.toFixed(2)),
       attendanceCount: userAttendance.length,
       tasksCount: userTasks.length,
-      completedTasks: userTasks.filter(t => t.status === 'Completed').length
+      completedTasks: userTasks.filter(t => t.status === 'Completed').length,
+      streak: streak
     };
   });
 

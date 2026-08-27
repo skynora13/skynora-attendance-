@@ -480,6 +480,25 @@ async function updateAttendanceStatus() {
     const completedPane = document.getElementById('completed-pane');
     const statusText = document.getElementById('session-status');
 
+    // Update streak UI
+    const streakCountEl = document.getElementById('intern-streak-count');
+    const streakMsgEl = document.getElementById('intern-streak-message');
+    const streakVal = data.streak || 0;
+    
+    if (streakCountEl && streakMsgEl) {
+      streakCountEl.textContent = streakVal;
+      if (streakVal === 0) {
+        streakMsgEl.innerHTML = 'Check in today to start your check-in streak! Let\'s build a consistent work habit. 🔥';
+      } else {
+        const hasCheckedInToday = data.todayRecord !== null;
+        if (hasCheckedInToday) {
+          streakMsgEl.innerHTML = `Awesome job! Your check-in streak is active. Keep up the great work! ⚡`;
+        } else {
+          streakMsgEl.innerHTML = `Your check-in streak is at <b>${streakVal}</b>. Check in today to keep the fire going! 🔥`;
+        }
+      }
+    }
+
     if (!data.todayRecord) {
       // Offline / Checked out
       statusText.textContent = "Status: Offline";
@@ -978,7 +997,7 @@ async function loadAdminInterns() {
     tbody.innerHTML = '';
     
     if (data.interns.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No interns registered yet.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No interns registered yet.</td></tr>`;
       return;
     }
 
@@ -990,6 +1009,7 @@ async function loadAdminInterns() {
         <td><span class="badge">${int.domain}</span></td>
         <td style="font-family:var(--font-mono); font-weight:600;">${int.totalHours} hrs</td>
         <td>${int.completedTasks} / ${int.tasksCount} completed</td>
+        <td><span style="font-weight: 600; font-family: var(--font-mono); color: #ff6a00;">${int.streak || 0} 🔥</span></td>
         <td>
           <button class="btn btn-secondary btn-sm delete-intern-btn" data-id="${int.id}" style="color:var(--status-danger); border-color:rgba(231, 76, 60, 0.3); background-color:rgba(231, 76, 60, 0.05); font-weight: 500; font-size: 11px;">Delete</button>
         </td>
