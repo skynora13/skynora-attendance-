@@ -225,21 +225,27 @@ module.exports = {
     // Update cache immediately
     memoryCache[name] = JSON.parse(JSON.stringify(items));
     
-    // Write to Mongo in the background
+    // Write to Mongo in the background (non-blocking)
     if (useMongo) {
-      const dbInstance = await connectDb();
-      if (dbInstance) {
-        dbInstance.collection(name).deleteMany({}).then(() => {
-          if (items.length > 0) {
-            dbInstance.collection(name).insertMany(items);
-          }
-        }).catch(err => console.error(`Error saving collection ${name} to Mongo:`, err));
-      }
+      connectDb().then(dbInstance => {
+        if (dbInstance) {
+          dbInstance.collection(name).deleteMany({}).then(() => {
+            if (items.length > 0) {
+              return dbInstance.collection(name).insertMany(items);
+            }
+          }).catch(err => console.error(`Background error saving collection ${name} to Mongo:`, err));
+        }
+      }).catch(err => console.error(`Background connection error in saveCollection for ${name}:`, err));
     }
+    
     // Update local file backup
-    const db = readDb();
-    db[name] = items;
-    writeDb(db);
+    try {
+      const db = readDb();
+      db[name] = items;
+      writeDb(db);
+    } catch (err) {
+      console.error('Error writing local database backup:', err);
+    }
   },
   
   insert: async (name, item) => {
@@ -247,19 +253,26 @@ module.exports = {
     if (!memoryCache[name]) memoryCache[name] = [];
     memoryCache[name].push(JSON.parse(JSON.stringify(item)));
     
-    // Write to Mongo in the background
+    // Write to Mongo in the background (non-blocking)
     if (useMongo) {
-      const dbInstance = await connectDb();
-      if (dbInstance) {
-        dbInstance.collection(name).insertOne({ ...item })
-          .catch(err => console.error(`Error inserting to Mongo in collection ${name}:`, err));
-      }
+      connectDb().then(dbInstance => {
+        if (dbInstance) {
+          dbInstance.collection(name).insertOne({ ...item })
+            .catch(err => console.error(`Background error inserting to Mongo in collection ${name}:`, err));
+        }
+      }).catch(err => console.error(`Background connection error in insert for ${name}:`, err));
     }
+    
     // Update local file backup
-    const db = readDb();
-    if (!db[name]) db[name] = [];
-    db[name].push(item);
-    writeDb(db);
+    try {
+      const db = readDb();
+      if (!db[name]) db[name] = [];
+      db[name].push(item);
+      writeDb(db);
+    } catch (err) {
+      console.error('Error writing local database backup:', err);
+    }
+    
     return item;
   },
   
@@ -272,24 +285,31 @@ module.exports = {
       updatedItem = JSON.parse(JSON.stringify(memoryCache[name][index]));
     }
     
-    // Write to Mongo in the background
+    // Write to Mongo in the background (non-blocking)
     if (useMongo) {
-      const dbInstance = await connectDb();
-      if (dbInstance) {
-        dbInstance.collection(name).findOneAndUpdate(
-          { id: id },
-          { $set: updateData },
-          { returnDocument: 'after' }
-        ).catch(err => console.error(`Error updating Mongo in collection ${name}:`, err));
-      }
+      connectDb().then(dbInstance => {
+        if (dbInstance) {
+          dbInstance.collection(name).findOneAndUpdate(
+            { id: id },
+            { $set: updateData },
+            { returnDocument: 'after' }
+          ).catch(err => console.error(`Background error updating Mongo in collection ${name}:`, err));
+        }
+      }).catch(err => console.error(`Background connection error in update for ${name}:`, err));
     }
+    
     // Update local file backup
-    const db = readDb();
-    const localIndex = db[name].findIndex(item => item.id === id);
-    if (localIndex !== -1) {
-      db[name][localIndex] = { ...db[name][localIndex], ...updateData };
-      writeDb(db);
+    try {
+      const db = readDb();
+      const localIndex = db[name].findIndex(item => item.id === id);
+      if (localIndex !== -1) {
+        db[name][localIndex] = { ...db[name][localIndex], ...updateData };
+        writeDb(db);
+      }
+    } catch (err) {
+      console.error('Error writing local database backup:', err);
     }
+    
     return updatedItem;
   }
 };
